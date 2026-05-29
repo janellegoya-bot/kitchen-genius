@@ -1,0 +1,2430 @@
+<!DOCTYPE html>
+<!-- saved from url=(0061)blob:https://copilot.fun/d1d6d62b-6bc0-4181-a4d9-13543a25626d -->
+<html lang="en" data-theme="dark"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><meta name="referrer" content="strict-origin-when-cross-origin"><meta http-equiv="Content-Security-Policy" content="default-src &#39;self&#39;; script-src &#39;nonce-required&#39; &#39;strict-dynamic&#39; https://cdn.jsdelivr.net/npm/ https://cdn.tailwindcss.com https://unpkg.com/lucide; connect-src &#39;self&#39; https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net/npm/ https://copilot.microsoft.com; worker-src &#39;self&#39; blob:; style-src &#39;unsafe-inline&#39; &#39;self&#39; https://fonts.googleapis.com/css2 https://cdn.jsdelivr.net/npm/; img-src &#39;self&#39; data: blob: *.mm.bing.net th.bing.com cdn.tailwindcss.com copilot.microsoft.com *.tile.openstreetmap.org https://cdn.jsdelivr.net/npm/; font-src &#39;self&#39; data: https://fonts.gstatic.com https://cdn.jsdelivr.net; media-src &#39;self&#39; blob: data:; object-src &#39;none&#39;; base-uri &#39;self&#39;; form-action &#39;self&#39;; frame-src &#39;none&#39;; upgrade-insecure-requests"><style>
+._nav-link-tooltip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  max-width: min(80%, 600px);
+  padding: 4px 8px;
+  background: rgba(32, 33, 36, 0.88);
+  color: #e8eaed;
+  font: 12px/16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-top-right-radius: 4px;
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  box-sizing: border-box;
+}
+._nav-link-tooltip._visible {
+  opacity: 1;
+}
+@media (prefers-color-scheme: light) {
+  ._nav-link-tooltip {
+    background: rgba(241, 243, 244, 0.92);
+    color: #202124;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+  }
+}
+</style>
+<script nonce="">
+(function() {
+  // Helper: check if a raw href is an external URL (http/https)
+  // Hash links (#section), relative paths (/page), mailto:, tel:, etc. are NOT external
+  function _isExternalHref(rawHref) {
+    if (!rawHref) return false;
+    var h = rawHref.trim().toLowerCase();
+    return h.startsWith('http://') || h.startsWith('https://') || h.startsWith('//');
+  }
+
+  // --- Link hover URL preview tooltip ---
+  var _tooltip = document.createElement('div');
+  _tooltip.className = '_nav-link-tooltip';
+  function _ensureTooltipMounted() {
+    if (!_tooltip.parentNode) {
+      (document.body || document.documentElement).appendChild(_tooltip);
+    }
+  }
+
+  document.addEventListener('mouseover', function(event) {
+    var el = event.target;
+    while (el && el.tagName !== 'A') {
+      el = el.parentElement;
+    }
+    if (!el) return;
+    var rawHref = el.getAttribute('href');
+    if (!rawHref || rawHref.startsWith('javascript:')) return;
+    _ensureTooltipMounted();
+    // Show raw href for clean display (avoids blob: URL noise)
+    _tooltip.textContent = rawHref;
+    _tooltip.classList.add('_visible');
+  }, true);
+
+  document.addEventListener('mouseout', function(event) {
+    var el = event.target;
+    while (el && el.tagName !== 'A') {
+      el = el.parentElement;
+    }
+    if (!el) return;
+    _tooltip.classList.remove('_visible');
+  }, true);
+
+  // --- Intercept anchor tag clicks ---
+  document.addEventListener('click', function(event) {
+    var target = event.target;
+    while (target && target.tagName !== 'A') {
+      target = target.parentElement;
+    }
+    if (!target) return;
+
+    var rawHref = target.getAttribute('href');
+    if (!rawHref || rawHref.startsWith('javascript:')) return;
+
+    // Hash links: Ctrl/Cmd+click to scroll to target, plain click places cursor
+    if (rawHref.startsWith('#')) {
+      if (event.ctrlKey || event.metaKey) {
+        var targetId = rawHref.substring(1);
+        if (targetId) {
+          var targetEl = document.getElementById(targetId) || document.getElementsByName(targetId)[0];
+          if (targetEl) {
+            event.preventDefault();
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }
+      return;
+    }
+
+    // Only intercept external links (http/https)
+    if (!_isExternalHref(rawHref)) return;
+
+    // Allow download links to proceed natively instead of intercepting them.
+    // The 'download' attribute signals the browser to save the file rather than navigate.
+    if (target.hasAttribute('download')) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    window.parent.postMessage({
+      type: 'navigate-link',
+      payload: {
+        url: target.href || rawHref,
+        target: target.target || undefined
+      },
+      timestamp: Date.now()
+    }, '*');
+  }, true);
+
+  // --- Intercept window.open calls ---
+  var _origOpen = window.open;
+  window.open = function(url, target, features) {
+    if (!url) return null;
+    var urlStr = String(url);
+
+    // Only intercept external URLs (http/https)
+    if (!_isExternalHref(urlStr)) {
+      return _origOpen.call(window, url, target, features);
+    }
+
+    var resolvedUrl;
+    try {
+      resolvedUrl = new URL(urlStr, window.location.href).href;
+    } catch (e) {
+      resolvedUrl = urlStr;
+    }
+
+    window.parent.postMessage({
+      type: 'navigate-link',
+      payload: {
+        url: resolvedUrl,
+        target: target || '_blank'
+      },
+      timestamp: Date.now()
+    }, '*');
+    return null;
+  };
+})();
+</script>
+      <script nonce="">
+        (function() {
+          if (typeof window !== 'undefined' && window.trustedTypes && window.trustedTypes.createPolicy) {
+            try {
+              window.trustedTypes.createPolicy('default', {
+                createHTML: function(input) { return input; },
+                createScript: function(input) { return input; },
+                createScriptURL: function(input) { return input; }
+              });
+            } catch (e) {
+              // Policy may already exist — ignore
+            }
+          }
+        })();
+      </script>
+      <script nonce="">
+        (function() {
+          const _0x1a2b = {
+            log: console.log,
+            info: console.info,
+            warn: console.warn,
+            error: console.error,
+            debug: console.debug
+          };
+
+          function _0x3c4d(e, t, n) {
+            try {
+              const o = {
+                type: 'iframe-console-log',
+                payload: {
+                  level: e,
+                  message: String(t),
+                  args: n.map(e => {
+                    try {
+                      return typeof e === 'object' ? JSON.stringify(e, null, 2) : String(e);
+                    } catch (e) {
+                      return '[Circular or Non-serializable]';
+                    }
+                  }),
+                  timestamp: Date.now(),
+                  stackTrace: e === 'error' ? new Error().stack : undefined
+                }
+              };
+
+              window.parent.postMessage(o, '*');
+            } catch (e) {
+              _0x1a2b[e].apply(console, [t, ...n]);
+            }
+          }
+
+          console.log = function(...args) {
+            _0x1a2b.log.apply(console, args);
+            _0x3c4d('log', args[0] || '', args.slice(1));
+          };
+
+          console.info = function(...args) {
+            _0x1a2b.info.apply(console, args);
+            _0x3c4d('info', args[0] || '', args.slice(1));
+          };
+
+          console.warn = function(...args) {
+            _0x1a2b.warn.apply(console, args);
+            _0x3c4d('warn', args[0] || '', args.slice(1));
+          };
+
+          console.error = function(...args) {
+            _0x1a2b.error.apply(console, args);
+            _0x3c4d('error', args[0] || '', args.slice(1));
+          };
+
+          console.debug = function(...args) {
+            _0x1a2b.debug.apply(console, args);
+            _0x3c4d('debug', args[0] || '', args.slice(1));
+          };
+
+          window.addEventListener('error', function(event) {
+            _0x3c4d('error', event.message, [
+              'Error in ' + event.filename + ':' + event.lineno + ':' + event.colno,
+              event.error ? event.error.stack : ''
+            ]);
+          });
+
+          window.addEventListener('unhandledrejection', function(event) {
+            _0x3c4d('error', 'Unhandled Promise Rejection', [
+              event.reason ? String(event.reason) : 'Unknown reason'
+            ]);
+          });
+
+          window.addEventListener('securitypolicyviolation', function(event) {
+            _0x3c4d('error', 'CSP Violation: ' + event.effectiveDirective, [
+              'blockedURI: ' + event.blockedURI,
+              'violatedDirective: ' + event.violatedDirective,
+              'originalPolicy: ' + event.originalPolicy,
+              'disposition: ' + event.disposition,
+              'documentURI: ' + event.documentURI
+            ]);
+          });
+
+          var _llmRequestHandlers = {};
+
+          window._useLLM = function(name, params) {
+            const requestId = Math.random().toString(36).slice(2);
+            const p = new Promise((resolve) => {
+              _llmRequestHandlers[requestId] = resolve;
+            });
+
+            const llmMsg = {
+              type: "use-llm",
+              requestId: requestId,
+              timestamp: Date.now(),
+              payload: {
+                name: name,
+                params: params,
+              },
+            };
+            window.parent.postMessage(llmMsg, '*');
+
+            return p;
+          };
+
+          window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'update-theme') {
+              const theme = event.data.payload?.theme;
+              if (theme === 'dark' || theme === 'light') {
+                const html = document.documentElement || document.querySelector('html');
+                if (html) {
+                  html.setAttribute('data-theme', theme);
+                }
+              }
+            }
+
+            if (event.source === window.parent && event.data.type === 'llmReply') {
+              const requestId = event.data.requestId;
+              const handler = _llmRequestHandlers[requestId];
+              if (handler !== undefined) {
+                handler(event.data.payload);
+                delete _llmRequestHandlers[requestId];
+              }
+            }
+          });
+
+          
+        })();
+      </script>
+    
+      <script nonce="">
+        (function() {
+          var _appDataCfg = { apiBase: "https://copilot.microsoft.com/c/api", appId: "tDxdHRSwxbgqe9uozXaQ4" };
+
+          var _reqCounter = 0;
+          var _pendingRequests = {};
+
+          function _appDataRequest(method, path, body) {
+            if (!_appDataCfg) {
+              return Promise.reject(new Error('AppSDK: not configured for this artifact type.'));
+            }
+            var requestId = 'adr-' + (++_reqCounter);
+            var fullPath = _appDataCfg.appId + '/' + path;
+
+            return new Promise(function(resolve, reject) {
+              var timeoutId = setTimeout(function() {
+                delete _pendingRequests[requestId];
+                reject(new Error('AppSDK: request timed out'));
+              }, 30000);
+
+              _pendingRequests[requestId] = { resolve: resolve, reject: reject, timeoutId: timeoutId };
+
+              var requestMsg = {
+                type: 'app-data:request',
+                timestamp: Date.now(),
+                payload: { method: method, path: fullPath, body: body, requestId: requestId }
+              };
+              window.parent.postMessage(requestMsg, '*');
+            });
+          }
+
+          window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'app-data:response') {
+              var payload = event.data.payload;
+              var pending = _pendingRequests[payload.requestId];
+              if (pending) {
+                clearTimeout(pending.timeoutId);
+                delete _pendingRequests[payload.requestId];
+                if (payload.ok) {
+                  pending.resolve(payload.data !== undefined ? payload.data : null);
+                } else {
+                  pending.reject(new Error(payload.error || 'Request failed'));
+                }
+              }
+            }
+          });
+
+          window.AppSDK = {
+            upsert: function(entityId, entityType, data) {
+              return _appDataRequest('PUT', entityId + '/' + entityType, { data: data });
+            },
+            get: function(entityId, entityType) {
+              return _appDataRequest('GET', entityId + '/' + entityType);
+            },
+            list: function(entityId) {
+              return _appDataRequest('GET', entityId);
+            },
+            delete: function(entityId, entityType) {
+              return _appDataRequest('DELETE', entityId + '/' + entityType);
+            },
+            deleteAll: function() {
+              return _appDataRequest('DELETE', '');
+            }
+          };
+        })();
+      </script>
+      
+      <script nonce="">
+        (function() {
+          var _aiReqCounter = 0;
+          var _aiPendingRequests = {};
+
+          // Per-method timeouts (ms). Image generation can take longer than chat/TTS.
+          var _aiTimeouts = { chat: 30000, generateImage: 60000, speak: 30000 };
+
+          function _appAiRequest(method, fields) {
+            var requestId = 'aai-' + (++_aiReqCounter);
+            var timeoutMs = _aiTimeouts[method] || 30000;
+
+            return new Promise(function(resolve, reject) {
+              var timeoutId = setTimeout(function() {
+                delete _aiPendingRequests[requestId];
+                reject(new Error('AppSDK.ai: request timed out'));
+              }, timeoutMs);
+
+              _aiPendingRequests[requestId] = { method: method, resolve: resolve, reject: reject, timeoutId: timeoutId };
+
+              var payload = { requestId: requestId, method: method };
+              for (var key in fields) {
+                if (Object.prototype.hasOwnProperty.call(fields, key)) {
+                  payload[key] = fields[key];
+                }
+              }
+
+              var requestMsg = {
+                type: 'app-ai:request',
+                timestamp: Date.now(),
+                payload: payload
+              };
+              window.parent.postMessage(requestMsg, '*');
+            });
+          }
+
+          window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'app-ai:response') {
+              var payload = event.data.payload;
+              var pending = _aiPendingRequests[payload.requestId];
+              if (pending) {
+                clearTimeout(pending.timeoutId);
+                delete _aiPendingRequests[payload.requestId];
+                if (payload.ok) {
+                  if (pending.method === 'generateImage') {
+                    pending.resolve({ image: payload.image, format: payload.format });
+                  } else if (pending.method === 'speak') {
+                    pending.resolve({ audio: payload.audio, format: payload.format });
+                  } else {
+                    pending.resolve({ content: payload.content });
+                  }
+                } else {
+                  pending.reject(new Error(payload.error || 'AI request failed'));
+                }
+              }
+            }
+          });
+
+          // Attach to existing AppSDK or create it
+          window.AppSDK = window.AppSDK || {};
+          window.AppSDK.ai = {
+            chat: function(request) {
+              if (!request || !Array.isArray(request.messages) || request.messages.length === 0) {
+                return Promise.reject(new Error('AppSDK.ai: messages array is required'));
+              }
+              return _appAiRequest('chat', { messages: request.messages });
+            },
+            generateImage: function(request) {
+              if (!request || typeof request.prompt !== 'string' || request.prompt.length === 0) {
+                return Promise.reject(new Error('AppSDK.ai: prompt is required'));
+              }
+              var fields = { prompt: request.prompt };
+              if (request.aspectRatio) fields.aspectRatio = request.aspectRatio;
+              if (request.quality) fields.quality = request.quality;
+              return _appAiRequest('generateImage', fields);
+            },
+            speak: function(request) {
+              if (!request || typeof request.text !== 'string' || request.text.length === 0) {
+                return Promise.reject(new Error('AppSDK.ai: text is required'));
+              }
+              var fields = { text: request.text };
+              if (request.voice) fields.voice = request.voice;
+              if (request.audioFormat) fields.audioFormat = request.audioFormat;
+              return _appAiRequest('speak', fields);
+            }
+          };
+        })();
+      </script>
+      
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Genius</title>
+    <script nonce="" src="https://cdn.tailwindcss.com/"></script>
+    <script nonce="">
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              cream: '#FAF3E0',
+              emerald: '#1A7340',
+              'emerald-dark': '#145A32',
+              'emerald-light': '#2E9B5E',
+              mint: '#C8EDD9',
+              'mint-light': '#E0F5EA',
+              rust: '#B7410E',
+              'rust-light': '#D4622E',
+              dark: '#1A2E1A',
+              'dark-muted': '#4A5E4A',
+            },
+          },
+        },
+      };
+    </script>
+    <script nonce="" src="https://cdn.jsdelivr.net/npm/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style>
+      :root {
+        --cream: #FAF3E0;
+        --emerald: #1A7340;
+        --emerald-dark: #145A32;
+        --mint: #C8EDD9;
+        --mint-light: #E0F5EA;
+        --rust: #B7410E;
+        --dark: #1A2E1A;
+        --white: #FFFFFF;
+        --card-radius: 14px;
+        --card-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      }
+      * { box-sizing: border-box; }
+      body {
+        font-family: 'Segoe UI', sans-serif;
+        background: var(--cream);
+        color: var(--dark);
+        margin: 0;
+        padding-bottom: 80px;
+        min-height: 100vh;
+      }
+      .card {
+        background: var(--mint);
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1rem;
+      }
+      .card-cream {
+        background: var(--cream);
+        border: 2px solid var(--emerald);
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1rem;
+      }
+      .card-white {
+        background: var(--white);
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1rem;
+      }
+      .card-rust {
+        background: var(--rust);
+        color: white;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1rem;
+      }
+      .card-amber {
+        background: #FFF3CD;
+        border: 2px solid #F59E0B;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        padding: 1rem;
+      }
+      .page-title {
+        color: var(--emerald);
+        font-weight: 700;
+        font-size: 24px;
+      }
+      .btn-emerald {
+        background: var(--emerald);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-size: 14px;
+      }
+      .btn-emerald:hover { background: var(--emerald-dark); }
+      .btn-rust {
+        background: var(--rust);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 20px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        font-size: 14px;
+      }
+      .btn-rust:hover { background: #952F08; }
+      .btn-outline-rust {
+        background: transparent;
+        color: var(--rust);
+        border: 2px solid var(--rust);
+        border-radius: 10px;
+        padding: 8px 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 14px;
+      }
+      .btn-outline-rust:hover {
+        background: var(--rust);
+        color: white;
+      }
+      input, select, textarea {
+        border: 1.5px solid #B8D4C0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 16px;
+        font-family: 'Segoe UI', sans-serif;
+        background: white;
+        color: var(--dark);
+        width: 100%;
+        transition: border 0.2s;
+      }
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--emerald);
+      }
+      .tab-page { display: none; }
+      .tab-page.active { display: block; animation: fadeIn 0.25s ease; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      .success-flash {
+        background: var(--emerald);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-align: center;
+        animation: flashIn 0.3s ease;
+      }
+      @keyframes flashIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+      .progress-ring-circle {
+        transition: stroke-dashoffset 0.8s ease;
+      }
+      .badge {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .badge-green { background: #D1FAE5; color: #065F46; }
+      .badge-yellow { background: #FEF3C7; color: #92400E; }
+      .badge-red { background: #FEE2E2; color: #991B1B; }
+      .badge-cat {
+        background: #E0F5EA;
+        color: var(--emerald);
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .bar-chart-bar {
+        border-radius: 4px 4px 0 0;
+        transition: height 0.5s ease;
+        min-width: 28px;
+      }
+      .bottom-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--emerald);
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: 6px 0 10px;
+        z-index: 100;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.12);
+      }
+      .bottom-nav button {
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.55);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 4px 6px;
+        cursor: pointer;
+        font-size: 10px;
+        font-family: 'Segoe UI', sans-serif;
+        font-weight: 600;
+        transition: color 0.2s;
+        position: relative;
+        min-width: 48px;
+        min-height: 48px;
+        justify-content: center;
+      }
+      .bottom-nav button.active {
+        color: white;
+      }
+      .bottom-nav button.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 24px;
+        height: 3px;
+        background: var(--rust);
+        border-radius: 2px;
+      }
+      .empty-state {
+        text-align: center;
+        color: var(--dark-muted, #4A5E4A);
+        padding: 24px;
+        font-style: italic;
+      }
+      .reason-picker {
+        display: none;
+        margin-top: 8px;
+        padding: 8px;
+        background: #FFF5F0;
+        border-radius: 10px;
+        border: 1px solid var(--rust);
+      }
+      .reason-picker.show { display: block; animation: fadeIn 0.2s ease; }
+      .history-section { display: none; }
+      .history-section.show { display: block; }
+      .tabular-nums { font-variant-numeric: tabular-nums; }
+      .achievement-locked { filter: grayscale(1); opacity: 0.45; }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:0.25rem}.mb-2{margin-bottom:0.5rem}.mb-3{margin-bottom:0.75rem}.mb-4{margin-bottom:1rem}.mb-5{margin-bottom:1.25rem}.mt-1{margin-top:0.25rem}.mt-2{margin-top:0.5rem}.mt-3{margin-top:0.75rem}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-24{height:6rem}.h-28{height:7rem}.h-32{height:8rem}.h-4{height:1rem}.h-5{height:1.25rem}.max-h-80{max-height:20rem}.w-4{width:1rem}.w-5{width:1.25rem}.w-full{width:100%}.max-w-lg{max-width:32rem}.flex-1{flex:1 1 0%}.cursor-pointer{cursor:pointer}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-end{align-items:flex-end}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.justify-around{justify-content:space-around}.gap-1{gap:0.25rem}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.whitespace-nowrap{white-space:nowrap}.rounded-full{border-radius:9999px}.border-b{border-bottom-width:1px}.border-gray-100{--tw-border-opacity:1;border-color:rgb(243 244 246 / var(--tw-border-opacity, 1))}.bg-cream{--tw-bg-opacity:1;background-color:rgb(250 243 224 / var(--tw-bg-opacity, 1))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235 / var(--tw-bg-opacity, 1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255 / var(--tw-bg-opacity, 1))}.bg-opacity-70{--tw-bg-opacity:0.7}.p-3{padding:0.75rem}.p-4{padding:1rem}.p-1{padding:0.25rem}.px-4{padding-left:1rem;padding-right:1rem}.py-3{padding-top:0.75rem;padding-bottom:0.75rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-2{padding-top:0.5rem;padding-bottom:0.5rem}.pb-24{padding-bottom:6rem}.pb-4{padding-bottom:1rem}.pt-4{padding-top:1rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-5xl{font-size:3rem;line-height:1}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-semibold{font-weight:600}.italic{font-style:italic}.tabular-nums{--tw-numeric-spacing:tabular-nums;font-variant-numeric:var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction)}.leading-tight{line-height:1.25}.text-dark-muted{--tw-text-opacity:1;color:rgb(74 94 74 / var(--tw-text-opacity, 1))}.text-emerald{--tw-text-opacity:1;color:rgb(26 115 64 / var(--tw-text-opacity, 1))}.text-rust{--tw-text-opacity:1;color:rgb(183 65 14 / var(--tw-text-opacity, 1))}.text-dark{--tw-text-opacity:1;color:rgb(26 46 26 / var(--tw-text-opacity, 1))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.opacity-70{opacity:0.7}.opacity-80{opacity:0.8}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-500{transition-duration:500ms}.last\:border-0:last-child{border-width:0px}@media (min-width: 768px){.md\:grid-cols-3{grid-template-columns:repeat(3, minmax(0, 1fr))}.md\:text-3xl{font-size:1.875rem;line-height:2.25rem}}</style></head>
+<body data-id="0" class="bg-cream">
+    <app-icon data-id="1" hidden="" data-icon="chef-hat" data-palette="Green" data-selection-initialized="true"></app-icon>
+
+    <main data-id="2" class="max-w-lg mx-auto px-4 pt-4 pb-4" data-selection-initialized="true">
+
+        <!-- ============ DASHBOARD ============ -->
+        <section data-id="3" id="page-dashboard" class="tab-page active" data-selection-initialized="true">
+            <div data-id="4" class="text-center mb-4" data-selection-initialized="true">
+                <h1 data-id="5" class="page-title text-2xl md:text-3xl flex items-center justify-center gap-2" data-selection-initialized="true">Kitchen Genius <span data-id="6" data-selection-initialized="true">🌿</span></h1>
+                <p data-id="7" class="text-dark-muted text-sm mt-1" data-selection-initialized="true">Your AI-powered kitchen assistant</p>
+            </div>
+
+            <div data-id="8" id="urgent-banner-k3f9" class="card-rust mb-4 flex items-center gap-2" data-selection-initialized="true">
+                <span data-id="9" class="text-xl" data-selection-initialized="true">⚠️</span>
+                <span data-id="10" id="urgent-text-x7m2" class="font-semibold text-sm" data-selection-initialized="true">3 items expire soon — use them today!</span>
+            </div>
+
+            <div data-id="11" class="grid grid-cols-2 gap-3 mb-4" data-selection-initialized="true">
+                <div data-id="12" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="13" class="text-2xl mb-1" data-selection-initialized="true">🥡</div>
+                    <div data-id="14" id="stat-leftovers-a1b2" class="text-2xl font-bold text-emerald tabular-nums" data-selection-initialized="true">3</div>
+                    <div data-id="15" class="text-xs text-dark-muted" data-selection-initialized="true">Leftovers Tracked</div>
+                </div>
+                <div data-id="16" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="17" class="text-2xl mb-1" data-selection-initialized="true">💸</div>
+                    <div data-id="18" id="stat-spent-c3d4" class="text-2xl font-bold text-emerald tabular-nums" data-selection-initialized="true">$87.00</div>
+                    <div data-id="19" class="text-xs text-dark-muted" data-selection-initialized="true">Spent This Week</div>
+                </div>
+                <div data-id="20" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="21" class="text-2xl mb-1" data-selection-initialized="true">🗑️</div>
+                    <div data-id="22" id="stat-wasted-e5f6" class="text-2xl font-bold text-rust tabular-nums" data-selection-initialized="true">$7.50</div>
+                    <div data-id="23" class="text-xs text-dark-muted" data-selection-initialized="true">Wasted This Week</div>
+                </div>
+                <div data-id="24" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="25" class="text-2xl mb-1" data-selection-initialized="true">🌍</div>
+                    <div data-id="26" id="stat-co2-g7h8" class="text-2xl font-bold text-emerald tabular-nums" data-selection-initialized="true">4g</div>
+                    <div data-id="27" class="text-xs text-dark-muted" data-selection-initialized="true">CO₂ Saved</div>
+                </div>
+            </div>
+
+            <div data-id="28" class="flex flex-col items-center mb-5" data-selection-initialized="true">
+                <svg data-id="29" width="140" height="140" viewBox="0 0 140 140" id="waste-ring-svg-j9k0" data-selection-initialized="true">
+                    <circle data-id="30" cx="70" cy="70" r="60" fill="none" stroke="#E0F5EA" stroke-width="12"></circle>
+                    <circle data-id="31" id="waste-ring-circle-m1n2" cx="70" cy="70" r="60" fill="none" stroke="var(--emerald)" stroke-width="12" stroke-linecap="round" stroke-dasharray="377" stroke-dashoffset="18.84955592153875" transform="rotate(-90 70 70)" class="progress-ring-circle"></circle>
+                    <text data-id="32" id="waste-ring-score-p3q4" x="70" y="66" text-anchor="middle" font-size="32" font-weight="700" fill="var(--emerald)" data-selection-initialized="true">95</text>
+                    <text data-id="33" x="70" y="86" text-anchor="middle" font-size="11" fill="#4A5E4A" data-selection-initialized="true">Waste Score</text>
+                </svg>
+            </div>
+
+            <div data-id="34" class="flex gap-2 mb-5 flex-wrap justify-center" data-selection-initialized="true">
+                <button data-id="35" id="qa-log-leftover-r5s6" class="btn-outline-rust text-xs flex items-center gap-1" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" data-id="36" class="lucide lucide-plus w-4 h-4" data-selection-initialized="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Log Leftover</button>
+                <button data-id="37" id="qa-log-waste-t7u8" class="btn-outline-rust text-xs flex items-center gap-1" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" data-id="38" class="lucide lucide-plus w-4 h-4" data-selection-initialized="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Log Waste</button>
+                <button data-id="39" id="qa-view-impact-v9w0" class="btn-outline-rust text-xs flex items-center gap-1" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="bar-chart-3" aria-hidden="true" data-id="40" class="lucide lucide-bar-chart-3 w-4 h-4" data-selection-initialized="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg> View Impact</button>
+            </div>
+
+            <div data-id="41" class="card-white mb-4" data-selection-initialized="true">
+                <h3 data-id="42" class="font-bold text-emerald text-sm mb-3 flex items-center gap-1" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="activity" aria-hidden="true" data-id="43" class="lucide lucide-activity w-4 h-4" data-selection-initialized="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"></path></svg> Recent Activity</h3>
+                <div data-id="44" id="activity-feed-x1y2" class="space-y-2" data-selection-initialized="true">
+            <div class="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0">
+                <span class="text-xs text-dark-muted whitespace-nowrap">Tue, May 19</span>
+                <span>🗑️ Wasted: Spinach ($2.50)</span>
+            </div>
+        
+            <div class="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0">
+                <span class="text-xs text-dark-muted whitespace-nowrap">Mon, May 18</span>
+                <span>🥡 Added leftover: Chicken Pasta</span>
+            </div>
+        
+            <div class="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0">
+                <span class="text-xs text-dark-muted whitespace-nowrap">Mon, May 18</span>
+                <span>🗑️ Wasted: Greek Yogurt ($1.80)</span>
+            </div>
+        
+            <div class="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0">
+                <span class="text-xs text-dark-muted whitespace-nowrap">Sun, May 17</span>
+                <span>🥡 Added leftover: Veggie Soup</span>
+            </div>
+        
+            <div class="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0">
+                <span class="text-xs text-dark-muted whitespace-nowrap">Sun, May 17</span>
+                <span>🥡 Added leftover: Rice &amp; Beans</span>
+            </div>
+        </div>
+            </div>
+        </section>
+
+        <!-- ============ LEFTOVERS ============ -->
+        <section data-id="46" id="page-leftovers" class="tab-page" data-selection-initialized="true">
+            <h1 data-id="47" class="page-title mb-1" data-selection-initialized="true">🥡 Leftovers Tracker</h1>
+            <p data-id="48" class="text-dark-muted text-sm mb-4" data-selection-initialized="true">Log meals, get alerts, reduce waste</p>
+
+            <div data-id="49" class="card mb-4" data-selection-initialized="true">
+                <h3 data-id="50" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Add Leftover</h3>
+                <div data-id="51" class="space-y-3" data-selection-initialized="true">
+                    <input data-id="52" id="lo-name-a2b3" type="text" placeholder="Meal Name" data-selection-initialized="true">
+                    <select data-id="53" id="lo-location-c4d5" data-selection-initialized="true">
+                        <option data-id="54" value="" data-selection-initialized="true">Storage Location</option>
+                        <option data-id="55" value="Fridge" data-selection-initialized="true">❄️ Fridge</option>
+                        <option data-id="56" value="Freezer" data-selection-initialized="true">🧊 Freezer</option>
+                        <option data-id="57" value="Counter" data-selection-initialized="true">🍽️ Counter</option>
+                    </select>
+                    <input data-id="58" id="lo-qty-e6f7" type="text" placeholder="Quantity (e.g. 2 portions)" data-selection-initialized="true">
+                    <input data-id="59" id="lo-expiry-g8h9" type="date" data-selection-initialized="true">
+                    <input data-id="60" id="lo-notes-i0j1" type="text" placeholder="Notes (optional)" data-selection-initialized="true">
+                    <button data-id="61" id="lo-add-btn-k2l3" class="btn-emerald w-full flex items-center justify-center gap-2" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" data-id="62" class="lucide lucide-plus w-4 h-4" data-selection-initialized="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Add Leftover</button>
+                    <div data-id="63" id="lo-success-m4n5" class="hidden success-flash" data-selection-initialized="true">✅ Added!</div>
+                </div>
+            </div>
+
+            <div data-id="64" id="lo-active-list-o6p7" class="space-y-3 mb-4" data-selection-initialized="true">
+                <div class="card-white" data-lo-id="mpdiiqe5ahja9">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-bold text-dark">❄️ Chicken Pasta</h4>
+                            <p class="text-xs text-dark-muted">2 portions · Expires Wed, May 20</p>
+                            
+                        </div>
+                        <span class="badge badge-yellow">🟡 Use Soon</span>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <button class="btn-emerald text-xs lo-eaten-btn flex-1" data-id="mpdiiqe5ahja9" data-selection-initialized="true">😋 Eaten</button>
+                        <button class="btn-rust text-xs lo-wasted-btn flex-1" data-id="mpdiiqe5ahja9" data-selection-initialized="true">🗑️ Wasted</button>
+                    </div>
+                    <div class="reason-picker" id="reason-picker-mpdiiqe5ahja9">
+                        <p class="text-xs font-semibold mb-2">Why was it wasted?</p>
+                        <div class="flex flex-wrap gap-1">
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5ahja9" data-reason="Expired" data-selection-initialized="true">Expired</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5ahja9" data-reason="Forgot" data-selection-initialized="true">Forgot about it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5ahja9" data-reason="Cooked too much" data-selection-initialized="true">Too much made</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5ahja9" data-reason="Didn&#39;t like" data-selection-initialized="true">Didn't like it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5ahja9" data-reason="Other" data-selection-initialized="true">Other</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-white" data-lo-id="mpdiiqe5j1y1b">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-bold text-dark">❄️ Veggie Soup</h4>
+                            <p class="text-xs text-dark-muted">3 portions · Expires Sat, May 23</p>
+                            <p class="text-xs text-dark-muted italic mt-1">Homemade</p>
+                        </div>
+                        <span class="badge badge-green">🟢 Fresh</span>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <button class="btn-emerald text-xs lo-eaten-btn flex-1" data-id="mpdiiqe5j1y1b" data-selection-initialized="true">😋 Eaten</button>
+                        <button class="btn-rust text-xs lo-wasted-btn flex-1" data-id="mpdiiqe5j1y1b" data-selection-initialized="true">🗑️ Wasted</button>
+                    </div>
+                    <div class="reason-picker" id="reason-picker-mpdiiqe5j1y1b">
+                        <p class="text-xs font-semibold mb-2">Why was it wasted?</p>
+                        <div class="flex flex-wrap gap-1">
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5j1y1b" data-reason="Expired" data-selection-initialized="true">Expired</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5j1y1b" data-reason="Forgot" data-selection-initialized="true">Forgot about it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5j1y1b" data-reason="Cooked too much" data-selection-initialized="true">Too much made</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5j1y1b" data-reason="Didn&#39;t like" data-selection-initialized="true">Didn't like it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5j1y1b" data-reason="Other" data-selection-initialized="true">Other</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-white" data-lo-id="mpdiiqe5c2qa1">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-bold text-dark">🧊 Rice &amp; Beans</h4>
+                            <p class="text-xs text-dark-muted">4 portions · Expires Tue, Jun 2</p>
+                            
+                        </div>
+                        <span class="badge badge-green">🟢 Fresh</span>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <button class="btn-emerald text-xs lo-eaten-btn flex-1" data-id="mpdiiqe5c2qa1" data-selection-initialized="true">😋 Eaten</button>
+                        <button class="btn-rust text-xs lo-wasted-btn flex-1" data-id="mpdiiqe5c2qa1" data-selection-initialized="true">🗑️ Wasted</button>
+                    </div>
+                    <div class="reason-picker" id="reason-picker-mpdiiqe5c2qa1">
+                        <p class="text-xs font-semibold mb-2">Why was it wasted?</p>
+                        <div class="flex flex-wrap gap-1">
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5c2qa1" data-reason="Expired" data-selection-initialized="true">Expired</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5c2qa1" data-reason="Forgot" data-selection-initialized="true">Forgot about it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5c2qa1" data-reason="Cooked too much" data-selection-initialized="true">Too much made</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5c2qa1" data-reason="Didn&#39;t like" data-selection-initialized="true">Didn't like it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="mpdiiqe5c2qa1" data-reason="Other" data-selection-initialized="true">Other</button>
+                        </div>
+                    </div>
+                </div></div>
+
+            <div data-id="65" class="card mb-4" data-selection-initialized="true">
+                <h3 data-id="66" class="font-bold text-emerald text-sm mb-3 flex items-center gap-1" data-selection-initialized="true">✨ AI Meal Suggester</h3>
+                <p data-id="67" class="text-xs text-dark-muted mb-2" data-selection-initialized="true">Get creative meal ideas from your current leftovers</p>
+                <button data-id="68" id="lo-ai-suggest-q8r9" class="btn-emerald w-full flex items-center justify-center gap-2" data-selection-initialized="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="sparkles" aria-hidden="true" data-id="69" class="lucide lucide-sparkles w-4 h-4" data-selection-initialized="true"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"></path><path d="M20 2v4"></path><path d="M22 4h-4"></path><circle cx="4" cy="20" r="2"></circle></svg> Suggest Meals from My Leftovers
+                </button>
+                <div data-id="70" id="lo-ai-results-s0t1" class="mt-3 hidden" data-selection-initialized="true"></div>
+            </div>
+
+            <div data-id="71" class="mb-4" data-selection-initialized="true">
+                <button data-id="72" id="lo-history-toggle-u2v3" class="text-sm text-emerald font-semibold flex items-center gap-1 cursor-pointer" data-selection-initialized="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="chevron-down" aria-hidden="true" data-id="73" class="lucide lucide-chevron-down w-4 h-4" data-selection-initialized="true"><path d="m6 9 6 6 6-6"></path></svg> History (Eaten &amp; Wasted)
+                </button>
+                <div data-id="74" id="lo-history-section-w4x5" class="history-section mt-2 space-y-2" data-selection-initialized="true"><p class="empty-state text-sm">No history yet</p></div>
+            </div>
+        </section>
+
+        <!-- ============ WASTE LOG ============ -->
+        <section data-id="75" id="page-waste" class="tab-page" data-selection-initialized="true">
+            <h1 data-id="76" class="page-title mb-1" data-selection-initialized="true">🗑️ Waste Tracker</h1>
+            <p data-id="77" class="text-dark-muted text-sm mb-4" data-selection-initialized="true">Track what you throw away — spot patterns, save money</p>
+
+            <div data-id="78" class="card mb-4" data-selection-initialized="true">
+                <h3 data-id="79" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Add Waste Entry</h3>
+                <div data-id="80" class="space-y-3" data-selection-initialized="true">
+                    <input data-id="81" id="wl-name-a3b4" type="text" placeholder="Item Name" data-selection-initialized="true">
+                    <select data-id="82" id="wl-cat-c5d6" data-selection-initialized="true">
+                        <option data-id="83" value="" data-selection-initialized="true">Category</option>
+                        <option data-id="84" value="Produce" data-selection-initialized="true">Produce</option>
+                        <option data-id="85" value="Dairy" data-selection-initialized="true">Dairy</option>
+                        <option data-id="86" value="Meat" data-selection-initialized="true">Meat</option>
+                        <option data-id="87" value="Leftovers" data-selection-initialized="true">Leftovers</option>
+                        <option data-id="88" value="Bread &amp; Grains" data-selection-initialized="true">Bread &amp; Grains</option>
+                        <option data-id="89" value="Snacks" data-selection-initialized="true">Snacks</option>
+                        <option data-id="90" value="Other" data-selection-initialized="true">Other</option>
+                    </select>
+                    <input data-id="91" id="wl-cost-e7f8" type="number" step="0.01" min="0" placeholder="Estimated Cost $" data-selection-initialized="true">
+                    <select data-id="92" id="wl-reason-g9h0" data-selection-initialized="true">
+                        <option data-id="93" value="" data-selection-initialized="true">Reason</option>
+                        <option data-id="94" value="Expired" data-selection-initialized="true">Expired</option>
+                        <option data-id="95" value="Forgot" data-selection-initialized="true">Forgot about it</option>
+                        <option data-id="96" value="Over-bought" data-selection-initialized="true">Over-bought</option>
+                        <option data-id="97" value="Didn&#39;t like" data-selection-initialized="true">Didn't like it</option>
+                        <option data-id="98" value="Cooked too much" data-selection-initialized="true">Cooked too much</option>
+                        <option data-id="99" value="Other" data-selection-initialized="true">Other</option>
+                    </select>
+                    <input data-id="100" id="wl-date-i1j2" type="date" data-selection-initialized="true">
+                    <button data-id="101" id="wl-add-btn-k3l4" class="btn-rust w-full flex items-center justify-center gap-2" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" data-id="102" class="lucide lucide-plus w-4 h-4" data-selection-initialized="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Log Waste</button>
+                    <div data-id="103" id="wl-success-m5n6" class="hidden success-flash" data-selection-initialized="true">✅ Logged!</div>
+                </div>
+            </div>
+
+            <div data-id="104" class="card-rust mb-4" data-selection-initialized="true">
+                <h3 data-id="105" class="font-bold text-sm mb-2" data-selection-initialized="true">This Week's Waste</h3>
+                <div data-id="106" id="wl-total-o7p8" class="text-3xl font-bold tabular-nums mb-3" data-selection-initialized="true">$7.50</div>
+                <div data-id="107" id="wl-barchart-q9r0" class="flex items-end gap-1 justify-between h-24" data-selection-initialized="true"><div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums"></span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:4px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">Wed</span>
+            </div><div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums"></span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:4px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">Thu</span>
+            </div><div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums"></span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:4px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">Fri</span>
+            </div><div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums"></span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:4px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">Sat</span>
+            </div><div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums">$3.20</span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:80px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">Sun</span>
+            </div><div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums">$1.80</span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:45px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">Mon</span>
+            </div><div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums">$2.50</span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:62.5px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">Tue</span>
+            </div></div>
+            </div>
+
+            <div data-id="108" class="card-cream mb-4" data-selection-initialized="true">
+                <h3 data-id="109" class="font-bold text-emerald text-sm mb-2 flex items-center gap-1" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="lightbulb" aria-hidden="true" data-id="110" class="lucide lucide-lightbulb w-4 h-4" data-selection-initialized="true"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"></path><path d="M9 18h6"></path><path d="M10 22h4"></path></svg> Smart Insights</h3>
+                <div data-id="111" id="wl-insights-s1t2" class="text-sm space-y-2" data-selection-initialized="true">
+                <p>📊 Top waste reason: <strong>Expired</strong></p>
+                <p>📦 Most wasted category: <strong>Produce</strong></p>
+                <p>💡 Tip: Try meal planning weekly to use produce before it expires.</p>
+            </div>
+            </div>
+
+            <div data-id="113" class="card-white" data-selection-initialized="true">
+                <h3 data-id="114" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Full Waste Log</h3>
+                <div data-id="115" id="wl-full-log-u3v4" class="space-y-2 max-h-80 overflow-y-auto" data-selection-initialized="true">
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">Spinach</div>
+                        <div class="text-xs text-dark-muted">Tue, May 19 · <span class="badge-cat">Produce</span> · Expired</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-rust tabular-nums">$2.50</span>
+                        <button class="text-rust wl-delete-btn cursor-pointer p-1" data-id="mpdiiqe58tzu0" title="Delete" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x w-4 h-4 pointer-events-none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+                    </div>
+                </div>
+            
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">Greek Yogurt</div>
+                        <div class="text-xs text-dark-muted">Mon, May 18 · <span class="badge-cat">Dairy</span> · Forgot</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-rust tabular-nums">$1.80</span>
+                        <button class="text-rust wl-delete-btn cursor-pointer p-1" data-id="mpdiiqe5ubhjo" title="Delete" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x w-4 h-4 pointer-events-none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+                    </div>
+                </div>
+            
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">Sourdough</div>
+                        <div class="text-xs text-dark-muted">Sun, May 17 · <span class="badge-cat">Bread &amp; Grains</span> · Over-bought</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-rust tabular-nums">$3.20</span>
+                        <button class="text-rust wl-delete-btn cursor-pointer p-1" data-id="mpdiiqe54qete" title="Delete" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="x" aria-hidden="true" class="lucide lucide-x w-4 h-4 pointer-events-none"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </section>
+
+        <!-- ============ BUDGET ============ -->
+        <section data-id="117" id="page-budget" class="tab-page" data-selection-initialized="true">
+            <h1 data-id="118" class="page-title mb-1" data-selection-initialized="true">💰 Budget Summary</h1>
+            <p data-id="119" class="text-dark-muted text-sm mb-4" data-selection-initialized="true">Track spending, find savings, waste less</p>
+
+            <div data-id="120" class="card mb-4" data-selection-initialized="true">
+                <h3 data-id="121" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Weekly Budget</h3>
+                <div data-id="122" class="flex gap-2" data-selection-initialized="true">
+                    <input data-id="123" id="bg-budget-a4b5" type="number" step="1" min="0" placeholder="Weekly grocery budget $" class="flex-1" data-selection-initialized="true">
+                    <button data-id="124" id="bg-save-btn-c6d7" class="btn-emerald whitespace-nowrap" data-selection-initialized="true">Save Budget</button>
+                </div>
+                <div data-id="125" id="bg-save-flash-e8f9" class="hidden success-flash mt-2" data-selection-initialized="true">✅ Saved!</div>
+            </div>
+
+            <div data-id="126" class="card-white mb-4" data-selection-initialized="true">
+                <h3 data-id="127" class="font-bold text-emerald text-sm mb-2" data-selection-initialized="true">Budget Progress</h3>
+                <div data-id="128" class="w-full bg-gray-200 rounded-full h-5 mb-2 overflow-hidden" data-selection-initialized="true">
+                    <div data-id="129" id="bg-progress-bar-g0h1" class="h-5 rounded-full transition-all duration-500" style="width: 58%; background: var(--emerald);" data-selection-initialized="true"></div>
+                </div>
+                <p data-id="130" id="bg-progress-label-i2j3" class="text-sm text-dark-muted tabular-nums" data-selection-initialized="true">$87.00 spent of $150.00 budget — $63.00 remaining</p>
+            </div>
+
+            <div data-id="131" class="card mb-4" data-selection-initialized="true">
+                <h3 data-id="132" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Log a Purchase</h3>
+                <div data-id="133" class="space-y-3" data-selection-initialized="true">
+                    <input data-id="134" id="bg-store-k4l5" type="text" placeholder="Store" data-selection-initialized="true">
+                    <input data-id="135" id="bg-item-m6n7" type="text" placeholder="Item / Category" data-selection-initialized="true">
+                    <input data-id="136" id="bg-amount-o8p9" type="number" step="0.01" min="0" placeholder="Amount $" data-selection-initialized="true">
+                    <input data-id="137" id="bg-date-q0r1" type="date" data-selection-initialized="true">
+                    <button data-id="138" id="bg-add-btn-s2t3" class="btn-emerald w-full flex items-center justify-center gap-2" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" data-id="139" class="lucide lucide-plus w-4 h-4" data-selection-initialized="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Add Purchase</button>
+                    <div data-id="140" id="bg-add-flash-u4v5" class="hidden success-flash" data-selection-initialized="true">✅ Added!</div>
+                </div>
+            </div>
+
+            <div data-id="141" class="card-white mb-4" data-selection-initialized="true">
+                <h3 data-id="142" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Weekly Spend Breakdown</h3>
+                <div data-id="143" id="bg-spend-chart-w6x7" class="flex items-end gap-2 justify-around h-32" data-selection-initialized="true"><div class="flex flex-col items-center gap-1 flex-1">
+                    <span class="text-xs font-bold tabular-nums">$42.50</span>
+                    <div class="bar-chart-bar w-full" style="height:100px; background:var(--emerald);"></div>
+                    <span class="text-xs text-dark-muted text-center leading-tight">Groceries</span>
+                </div><div class="flex flex-col items-center gap-1 flex-1">
+                    <span class="text-xs font-bold tabular-nums">$28.00</span>
+                    <div class="bar-chart-bar w-full" style="height:65.88235294117646px; background:var(--mint);"></div>
+                    <span class="text-xs text-dark-muted text-center leading-tight">Produce &amp; Dairy</span>
+                </div><div class="flex flex-col items-center gap-1 flex-1">
+                    <span class="text-xs font-bold tabular-nums">$16.50</span>
+                    <div class="bar-chart-bar w-full" style="height:38.82352941176471px; background:var(--rust);"></div>
+                    <span class="text-xs text-dark-muted text-center leading-tight">Meat &amp; Bread</span>
+                </div></div>
+            </div>
+
+            <div data-id="144" class="card-cream mb-4" data-selection-initialized="true">
+                <h3 data-id="145" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">💚 Savings Tracker</h3>
+                <div data-id="146" class="space-y-3" data-selection-initialized="true">
+                    <input data-id="147" id="bg-swap-item-y8z9" type="text" placeholder="Item swapped (e.g. store-brand pasta)" data-selection-initialized="true">
+                    <input data-id="148" id="bg-swap-saved-a0b1" type="number" step="0.01" min="0" placeholder="$ saved" data-selection-initialized="true">
+                    <button data-id="149" id="bg-swap-btn-c2d3" class="btn-emerald w-full flex items-center justify-center gap-2" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" data-id="150" class="lucide lucide-plus w-4 h-4" data-selection-initialized="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Log Swap</button>
+                    <div data-id="151" id="bg-swap-flash-e4f5" class="hidden success-flash" data-selection-initialized="true">✅ Swap Logged!</div>
+                </div>
+                <div data-id="152" id="bg-swap-total-g6h7" class="mt-3 text-center font-bold text-emerald text-lg" data-selection-initialized="true">💚 Total saved from smart swaps: $1.50</div>
+            </div>
+
+            <div data-id="153" class="flex flex-col items-center mb-5" data-selection-initialized="true">
+                <div data-id="154" id="bg-waste-score-i8j9" class="text-5xl font-bold text-emerald tabular-nums" data-selection-initialized="true">95</div>
+                <p data-id="155" class="text-sm text-dark-muted mt-1" data-selection-initialized="true">Waste Reduction Score — Less waste = more savings 💚</p>
+            </div>
+
+            <div data-id="156" class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4" data-selection-initialized="true">
+                <div data-id="157" class="card text-center p-3" data-selection-initialized="true"><div data-id="158" class="text-2xl mb-1" data-selection-initialized="true">📋</div><p data-id="159" class="text-xs font-semibold" data-selection-initialized="true">Plan meals before you shop</p></div>
+                <div data-id="160" class="card text-center p-3" data-selection-initialized="true"><div data-id="161" class="text-2xl mb-1" data-selection-initialized="true">🥶</div><p data-id="162" class="text-xs font-semibold" data-selection-initialized="true">Buy frozen produce — lasts longer</p></div>
+                <div data-id="163" class="card text-center p-3" data-selection-initialized="true"><div data-id="164" class="text-2xl mb-1" data-selection-initialized="true">📝</div><p data-id="165" class="text-xs font-semibold" data-selection-initialized="true">Shop with a list and stick to it</p></div>
+                <div data-id="166" class="card text-center p-3" data-selection-initialized="true"><div data-id="167" class="text-2xl mb-1" data-selection-initialized="true">🏪</div><p data-id="168" class="text-xs font-semibold" data-selection-initialized="true">Use store brands for staples</p></div>
+                <div data-id="169" class="card text-center p-3" data-selection-initialized="true"><div data-id="170" class="text-2xl mb-1" data-selection-initialized="true">📦</div><p data-id="171" class="text-xs font-semibold" data-selection-initialized="true">Buy in bulk for non-perishables</p></div>
+                <div data-id="172" class="card text-center p-3" data-selection-initialized="true"><div data-id="173" class="text-2xl mb-1" data-selection-initialized="true">🧊</div><p data-id="174" class="text-xs font-semibold" data-selection-initialized="true">Check the fridge before ordering takeout</p></div>
+            </div>
+        </section>
+
+        <!-- ============ ALERTS ============ -->
+        <section data-id="175" id="page-alerts" class="tab-page" data-selection-initialized="true">
+            <h1 data-id="176" class="page-title mb-1" data-selection-initialized="true">🔔 Expiry Alerts</h1>
+            <p data-id="177" class="text-dark-muted text-sm mb-4" data-selection-initialized="true">Track individual items — never waste food again</p>
+
+            <div data-id="178" class="card mb-4" data-selection-initialized="true">
+                <h3 data-id="179" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Add Item</h3>
+                <div data-id="180" class="space-y-3" data-selection-initialized="true">
+                    <input data-id="181" id="al-name-k0l1" type="text" placeholder="Item Name" data-selection-initialized="true">
+                    <select data-id="182" id="al-cat-m2n3" data-selection-initialized="true">
+                        <option data-id="183" value="" data-selection-initialized="true">Category</option>
+                        <option data-id="184" value="Produce" data-selection-initialized="true">Produce</option>
+                        <option data-id="185" value="Dairy" data-selection-initialized="true">Dairy</option>
+                        <option data-id="186" value="Meat" data-selection-initialized="true">Meat</option>
+                        <option data-id="187" value="Bread" data-selection-initialized="true">Bread</option>
+                        <option data-id="188" value="Pantry" data-selection-initialized="true">Pantry</option>
+                        <option data-id="189" value="Leftovers" data-selection-initialized="true">Leftovers</option>
+                        <option data-id="190" value="Other" data-selection-initialized="true">Other</option>
+                    </select>
+                    <input data-id="191" id="al-qty-o4p5" type="text" placeholder="Quantity" data-selection-initialized="true">
+                    <input data-id="192" id="al-expiry-q6r7" type="date" data-selection-initialized="true">
+                    <select data-id="193" id="al-loc-s8t9" data-selection-initialized="true">
+                        <option data-id="194" value="" data-selection-initialized="true">Location</option>
+                        <option data-id="195" value="Fridge" data-selection-initialized="true">❄️ Fridge</option>
+                        <option data-id="196" value="Freezer" data-selection-initialized="true">🧊 Freezer</option>
+                        <option data-id="197" value="Pantry" data-selection-initialized="true">🗄️ Pantry</option>
+                        <option data-id="198" value="Counter" data-selection-initialized="true">🍽️ Counter</option>
+                    </select>
+                    <button data-id="199" id="al-add-btn-u0v1" class="btn-emerald w-full flex items-center justify-center gap-2" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="plus" aria-hidden="true" data-id="200" class="lucide lucide-plus w-4 h-4" data-selection-initialized="true"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg> Track Item</button>
+                    <div data-id="201" id="al-success-w2x3" class="hidden success-flash" data-selection-initialized="true">✅ Added!</div>
+                </div>
+            </div>
+
+            <div data-id="202" id="al-summary-y4z5" class="card-white mb-4 text-center font-semibold text-sm" data-selection-initialized="true">🔴 0 expired · 🟡 2 expiring soon · 🟢 0 fresh items</div>
+            <div data-id="203" id="al-smart-tip-a6b7" class="card-cream mb-4 text-sm" data-selection-initialized="true">💡 <strong>Strawberries</strong> expires in 1 day — try adding it to tonight's dinner!</div>
+
+            <div data-id="204" id="al-expired-section-c8d9" class="mb-3" data-selection-initialized="true"></div>
+            <div data-id="205" id="al-soon-section-e0f1" class="mb-3" data-selection-initialized="true"><h3 class="font-bold text-sm mb-2">🟡 Use Soon</h3><div class="card-amber mb-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-sm">❄️ Strawberries</h4>
+                                <p class="text-xs opacity-80">1 lb · <span class="badge-cat">Produce</span> · Wed, May 20</p>
+                                <p class="text-xs opacity-70 mt-1">1 day left</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button class="btn-emerald text-xs al-used-btn flex-1" data-id="mpdiiqe5nz1og" data-selection-initialized="true">✅ Used</button>
+                            <button class="btn-rust text-xs al-discard-btn flex-1" data-id="mpdiiqe5nz1og" data-selection-initialized="true">🗑️ Discarded</button>
+                        </div>
+                    </div><div class="card-amber mb-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-sm">❄️ Cheddar Cheese</h4>
+                                <p class="text-xs opacity-80">8 oz block · <span class="badge-cat">Dairy</span> · Thu, May 21</p>
+                                <p class="text-xs opacity-70 mt-1">2 days left</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button class="btn-emerald text-xs al-used-btn flex-1" data-id="mpdiiqe5dvrjc" data-selection-initialized="true">✅ Used</button>
+                            <button class="btn-rust text-xs al-discard-btn flex-1" data-id="mpdiiqe5dvrjc" data-selection-initialized="true">🗑️ Discarded</button>
+                        </div>
+                    </div></div>
+            <div data-id="206" id="al-fresh-section-g2h3" class="mb-3" data-selection-initialized="true"></div>
+        </section>
+
+        <!-- ============ IMPACT ============ -->
+        <section data-id="207" id="page-impact" class="tab-page" data-selection-initialized="true">
+            <h1 data-id="208" class="page-title mb-1" data-selection-initialized="true">📊 My Kitchen Impact</h1>
+            <p data-id="209" class="text-dark-muted text-sm mb-4" data-selection-initialized="true">See the difference you're making 🌍</p>
+
+            <div data-id="210" class="flex flex-col items-center mb-5" data-selection-initialized="true">
+                <svg data-id="211" width="160" height="160" viewBox="0 0 160 160" id="impact-ring-svg-i4j5" data-selection-initialized="true">
+                    <circle data-id="212" cx="80" cy="80" r="68" fill="none" stroke="#E0F5EA" stroke-width="14"></circle>
+                    <circle data-id="213" id="impact-ring-circle-k6l7" cx="80" cy="80" r="68" fill="none" stroke="var(--emerald)" stroke-width="14" stroke-linecap="round" stroke-dasharray="427.3" stroke-dashoffset="21.3628300444106" transform="rotate(-90 80 80)" class="progress-ring-circle"></circle>
+                    <text data-id="214" id="impact-ring-score-m8n9" x="80" y="72" text-anchor="middle" font-size="38" font-weight="700" fill="var(--emerald)" data-selection-initialized="true">95</text>
+                    <text data-id="215" id="impact-ring-grade-o0p1" x="80" y="96" text-anchor="middle" font-size="16" font-weight="600" fill="#4A5E4A" data-selection-initialized="true">A</text>
+                    <text data-id="216" x="80" y="115" text-anchor="middle" font-size="11" fill="#4A5E4A" data-selection-initialized="true">Food Waste Score</text>
+                </svg>
+            </div>
+
+            <div data-id="217" class="grid grid-cols-2 gap-3 mb-5" data-selection-initialized="true">
+                <div data-id="218" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="219" class="text-2xl mb-1" data-selection-initialized="true">🌍</div>
+                    <div data-id="220" id="imp-co2-q2r3" class="text-xl font-bold text-emerald tabular-nums" data-selection-initialized="true">4g</div>
+                    <div data-id="221" class="text-xs text-dark-muted" data-selection-initialized="true">CO₂ Prevented</div>
+                </div>
+                <div data-id="222" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="223" class="text-2xl mb-1" data-selection-initialized="true">💰</div>
+                    <div data-id="224" id="imp-saved-s4t5" class="text-xl font-bold text-emerald tabular-nums" data-selection-initialized="true">$57.00</div>
+                    <div data-id="225" class="text-xs text-dark-muted" data-selection-initialized="true">Money Saved</div>
+                </div>
+                <div data-id="226" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="227" class="text-2xl mb-1" data-selection-initialized="true">🥗</div>
+                    <div data-id="228" id="imp-meals-u6v7" class="text-xl font-bold text-emerald tabular-nums" data-selection-initialized="true">0</div>
+                    <div data-id="229" class="text-xs text-dark-muted" data-selection-initialized="true">Meals Saved</div>
+                </div>
+                <div data-id="230" class="card text-center p-4" data-selection-initialized="true">
+                    <div data-id="231" class="text-2xl mb-1" data-selection-initialized="true">📅</div>
+                    <div data-id="232" id="imp-days-w8x9" class="text-xl font-bold text-emerald tabular-nums" data-selection-initialized="true">2</div>
+                    <div data-id="233" class="text-xs text-dark-muted" data-selection-initialized="true">Days Tracked</div>
+                </div>
+            </div>
+
+            <div data-id="234" class="card-white mb-5" data-selection-initialized="true">
+                <h3 data-id="235" class="font-bold text-emerald text-sm mb-3" data-selection-initialized="true">Monthly Waste Trend</h3>
+                <div data-id="236" id="imp-trend-chart-y0z1" class="flex items-end gap-3 justify-around h-28" data-selection-initialized="true"><div class="flex flex-col items-center gap-1 flex-1">
+                <span class="text-xs font-bold tabular-nums">$0.00</span>
+                <div class="bar-chart-bar w-full" style="height:6px; background: var(--rust);"></div>
+                <span class="text-xs text-dark-muted">Wk 1</span>
+            </div><div class="flex flex-col items-center gap-1 flex-1">
+                <span class="text-xs font-bold tabular-nums">$0.00</span>
+                <div class="bar-chart-bar w-full" style="height:6px; background: var(--rust);"></div>
+                <span class="text-xs text-dark-muted">Wk 2</span>
+            </div><div class="flex flex-col items-center gap-1 flex-1">
+                <span class="text-xs font-bold tabular-nums">$0.00</span>
+                <div class="bar-chart-bar w-full" style="height:6px; background: var(--rust);"></div>
+                <span class="text-xs text-dark-muted">Wk 3</span>
+            </div><div class="flex flex-col items-center gap-1 flex-1">
+                <span class="text-xs font-bold tabular-nums">$7.50</span>
+                <div class="bar-chart-bar w-full" style="height:90px; background: var(--rust);"></div>
+                <span class="text-xs text-dark-muted">Wk 4</span>
+            </div></div>
+            </div>
+
+            <div data-id="237" class="card-cream mb-5" data-selection-initialized="true">
+                <h3 data-id="238" class="font-bold text-emerald text-sm mb-3 flex items-center gap-1" data-selection-initialized="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trophy" aria-hidden="true" data-id="239" class="lucide lucide-trophy w-4 h-4" data-selection-initialized="true"><path d="M10 14.66v1.626a2 2 0 0 1-.976 1.696A5 5 0 0 0 7 21.978"></path><path d="M14 14.66v1.626a2 2 0 0 0 .976 1.696A5 5 0 0 1 17 21.978"></path><path d="M18 9h1.5a1 1 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z"></path><path d="M6 9H4.5a1 1 0 0 1 0-5H6"></path></svg> Achievements</h3>
+                <div data-id="240" id="imp-badges-a2b3" class="grid grid-cols-2 gap-3" data-selection-initialized="true">
+            <div class="card text-center p-3 ">
+                <div class="text-2xl mb-1">🌱</div>
+                <div class="text-xs font-bold">First Step</div>
+                <div class="text-xs text-dark-muted">Logged your first item</div>
+                <div class="text-xs mt-1 font-semibold text-emerald">✅ Unlocked</div>
+            </div>
+        
+            <div class="card text-center p-3 achievement-locked">
+                <div class="text-2xl mb-1">💚</div>
+                <div class="text-xs font-bold">Zero Waste Week</div>
+                <div class="text-xs text-dark-muted">$0 waste in a week</div>
+                <div class="text-xs mt-1 font-semibold text-gray-400">🔒 Locked</div>
+            </div>
+        
+            <div class="card text-center p-3 ">
+                <div class="text-2xl mb-1">🏆</div>
+                <div class="text-xs font-bold">Budget Champion</div>
+                <div class="text-xs text-dark-muted">Stayed under budget</div>
+                <div class="text-xs mt-1 font-semibold text-emerald">✅ Unlocked</div>
+            </div>
+        
+            <div class="card text-center p-3 achievement-locked">
+                <div class="text-2xl mb-1">🥗</div>
+                <div class="text-xs font-bold">Leftover Hero</div>
+                <div class="text-xs text-dark-muted">Eaten 10 leftovers</div>
+                <div class="text-xs mt-1 font-semibold text-gray-400">🔒 Locked</div>
+            </div>
+        
+            <div class="card text-center p-3 achievement-locked">
+                <div class="text-2xl mb-1">🌍</div>
+                <div class="text-xs font-bold">Eco Warrior</div>
+                <div class="text-xs text-dark-muted">Saved 1kg CO₂</div>
+                <div class="text-xs mt-1 font-semibold text-gray-400">🔒 Locked</div>
+            </div>
+        </div>
+            </div>
+
+            <div data-id="241" id="imp-motivational-c4d5" class="text-center text-emerald italic text-sm mb-4" data-selection-initialized="true">Start tracking your leftovers and food to see the impact you're making! 🌿</div>
+        </section>
+    </main>
+
+    <footer data-id="242" class="text-center text-xs text-dark-muted py-3 pb-24" data-selection-initialized="true">Made by Copilot</footer>
+
+    <nav data-id="243" class="bottom-nav" id="bottom-nav-e6f7" data-selection-initialized="true">
+        <button data-id="244" data-tab="dashboard" class="active" data-selection-initialized="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="home" aria-hidden="true" data-id="245" class="lucide lucide-home w-5 h-5" data-selection-initialized="true"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+            <span data-id="246" data-selection-initialized="true">Dashboard</span>
+        </button>
+        <button data-id="247" data-tab="leftovers" data-selection-initialized="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="package" aria-hidden="true" data-id="248" class="lucide lucide-package w-5 h-5" data-selection-initialized="true"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path><path d="M12 22V12"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><path d="m7.5 4.27 9 5.15"></path></svg>
+            <span data-id="249" data-selection-initialized="true">Leftovers</span>
+        </button>
+        <button data-id="250" data-tab="waste" data-selection-initialized="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="trash-2" aria-hidden="true" data-id="251" class="lucide lucide-trash-2 w-5 h-5" data-selection-initialized="true"><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path><path d="M3 6h18"></path><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span data-id="252" data-selection-initialized="true">Waste Log</span>
+        </button>
+        <button data-id="253" data-tab="budget" data-selection-initialized="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="wallet" aria-hidden="true" data-id="254" class="lucide lucide-wallet w-5 h-5" data-selection-initialized="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>
+            <span data-id="255" data-selection-initialized="true">Budget</span>
+        </button>
+        <button data-id="256" data-tab="alerts" data-selection-initialized="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="bell" aria-hidden="true" data-id="257" class="lucide lucide-bell w-5 h-5" data-selection-initialized="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+            <span data-id="258" data-selection-initialized="true">Alerts</span>
+        </button>
+        <button data-id="259" data-tab="impact" data-selection-initialized="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="bar-chart-3" aria-hidden="true" data-id="260" class="lucide lucide-bar-chart-3 w-5 h-5" data-selection-initialized="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"></path><path d="M18 17V9"></path><path d="M13 17V5"></path><path d="M8 17v-3"></path></svg>
+            <span data-id="261" data-selection-initialized="true">Impact</span>
+        </button>
+    </nav>
+
+    <script nonce="">
+    lucide.createIcons();
+
+    // ====== UTILITIES ======
+    const $ = id => document.getElementById(id);
+    const fmt = n => '$' + Number(n || 0).toFixed(2);
+    const today = () => {
+        const d = new Date(2026, 4, 19);
+        return d.toISOString().split('T')[0];
+    };
+    const NOW = new Date(2026, 4, 19);
+
+    function fmtDate(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function daysBetween(dateStr) {
+        const d = new Date(dateStr + 'T00:00:00');
+        const t = new Date(NOW);
+        t.setHours(0,0,0,0);
+        return Math.ceil((d - t) / 86400000);
+    }
+
+    function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+    function isThisWeek(dateStr) {
+        const d = new Date(dateStr + 'T00:00:00');
+        const t = new Date(NOW); t.setHours(0,0,0,0);
+        const startOfWeek = new Date(t);
+        startOfWeek.setDate(t.getDate() - t.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        return d >= startOfWeek && d < endOfWeek;
+    }
+
+    function flash(el) {
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 1500);
+    }
+
+    // ====== DATA LAYER ======
+    const KEYS = {
+        leftovers: 'kg_leftovers',
+        wasteLog: 'kg_wasteLog',
+        budgetSettings: 'kg_budgetSettings',
+        purchases: 'kg_purchases',
+        swapSavings: 'kg_swapSavings',
+        trackedItems: 'kg_trackedItems',
+    };
+
+    let data = {
+        leftovers: [],
+        wasteLog: [],
+        budgetSettings: { weeklyBudget: 0 },
+        purchases: [],
+        swapSavings: [],
+        trackedItems: [],
+    };
+
+    function loadData() {
+        for (const [key, sKey] of Object.entries(KEYS)) {
+            try {
+                const raw = localStorage.getItem(sKey);
+                if (raw) data[key] = JSON.parse(raw);
+            } catch(e) {}
+        }
+    }
+
+    function saveKey(key) {
+        localStorage.setItem(KEYS[key], JSON.stringify(data[key]));
+    }
+
+    function saveAll() {
+        for (const key of Object.keys(KEYS)) saveKey(key);
+    }
+
+    // ====== SAMPLE DATA ======
+    function seedSampleData() {
+        if (localStorage.getItem('kg_seeded')) return;
+
+        const todayStr = '2026-05-19';
+        const tmrw = '2026-05-20';
+        const in4 = '2026-05-23';
+        const in14 = '2026-06-02';
+        const in2 = '2026-05-21';
+        const yest = '2026-05-18';
+        const dayAgo2 = '2026-05-17';
+
+        data.leftovers = [
+            { id: genId(), name: 'Chicken Pasta', location: 'Fridge', quantity: '2 portions', expiryDate: tmrw, notes: '', status: 'active', createdAt: yest },
+            { id: genId(), name: 'Veggie Soup', location: 'Fridge', quantity: '3 portions', expiryDate: in4, notes: 'Homemade', status: 'active', createdAt: dayAgo2 },
+            { id: genId(), name: 'Rice & Beans', location: 'Freezer', quantity: '4 portions', expiryDate: in14, notes: '', status: 'active', createdAt: dayAgo2 },
+        ];
+
+        data.wasteLog = [
+            { id: genId(), item: 'Spinach', category: 'Produce', cost: 2.50, reason: 'Expired', date: todayStr },
+            { id: genId(), item: 'Greek Yogurt', category: 'Dairy', cost: 1.80, reason: 'Forgot', date: yest },
+            { id: genId(), item: 'Sourdough', category: 'Bread & Grains', cost: 3.20, reason: 'Over-bought', date: dayAgo2 },
+        ];
+
+        data.budgetSettings = { weeklyBudget: 150 };
+
+        data.purchases = [
+            { id: genId(), store: 'Walmart', item: 'Groceries', amount: 42.50, date: yest },
+            { id: genId(), store: 'Aldi', item: 'Produce & Dairy', amount: 28.00, date: dayAgo2 },
+            { id: genId(), store: 'Kroger', item: 'Meat & Bread', amount: 16.50, date: todayStr },
+        ];
+
+        data.swapSavings = [
+            { id: genId(), item: 'Store-brand pasta', saved: 1.50, date: yest },
+        ];
+
+        data.trackedItems = [
+            { id: genId(), name: 'Strawberries', category: 'Produce', quantity: '1 lb', expiryDate: tmrw, location: 'Fridge', status: 'active', createdAt: dayAgo2 },
+            { id: genId(), name: 'Cheddar Cheese', category: 'Dairy', quantity: '8 oz block', expiryDate: in2, location: 'Fridge', status: 'active', createdAt: dayAgo2 },
+        ];
+
+        saveAll();
+        localStorage.setItem('kg_seeded', '1');
+    }
+
+    // ====== CALCULATIONS ======
+    function calcWasteThisWeek() {
+        return data.wasteLog.filter(w => isThisWeek(w.date)).reduce((s, w) => s + (w.cost || 0), 0);
+    }
+    function calcSpentThisWeek() {
+        return data.purchases.filter(p => isThisWeek(p.date)).reduce((s, p) => s + (p.amount || 0), 0);
+    }
+    function calcWasteScore() {
+        const budget = data.budgetSettings.weeklyBudget || 1;
+        const waste = calcWasteThisWeek();
+        return Math.max(0, Math.min(100, Math.round(100 - (waste / budget * 100))));
+    }
+    function calcTotalSwapSavings() {
+        return data.swapSavings.reduce((s, sw) => s + (sw.saved || 0), 0);
+    }
+    function calcCO2(savings) {
+        return savings * 0.0025;
+    }
+    function activeLeftovers() {
+        return data.leftovers.filter(l => l.status === 'active');
+    }
+    function activeTrackedItems() {
+        return data.trackedItems.filter(t => t.status === 'active');
+    }
+    function getGrade(score) {
+        if (score >= 85) return 'A';
+        if (score >= 70) return 'B';
+        if (score >= 50) return 'C';
+        return 'D';
+    }
+
+    // ====== TAB NAVIGATION ======
+    const navBtns = document.querySelectorAll('#bottom-nav-e6f7 button');
+    const pages = document.querySelectorAll('.tab-page');
+
+    function switchTab(tabName) {
+        pages.forEach(p => p.classList.remove('active'));
+        navBtns.forEach(b => b.classList.remove('active'));
+        const page = document.getElementById('page-' + tabName);
+        if (page) page.classList.add('active');
+        const btn = document.querySelector(`#bottom-nav-e6f7 button[data-tab="${tabName}"]`);
+        if (btn) btn.classList.add('active');
+        renderAll();
+        window.scrollTo(0, 0);
+    }
+
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // ====== QUICK ACTIONS ======
+    $('qa-log-leftover-r5s6').addEventListener('click', () => switchTab('leftovers'));
+    $('qa-log-waste-t7u8').addEventListener('click', () => switchTab('waste'));
+    $('qa-view-impact-v9w0').addEventListener('click', () => switchTab('impact'));
+
+    // ====== RENDER FUNCTIONS ======
+
+    function renderDashboard() {
+        const active = activeLeftovers();
+        $('stat-leftovers-a1b2').textContent = active.length;
+        $('stat-spent-c3d4').textContent = fmt(calcSpentThisWeek());
+        const wasteWeek = calcWasteThisWeek();
+        $('stat-wasted-e5f6').textContent = fmt(wasteWeek);
+
+        const totalSavings = calcTotalSwapSavings();
+        const co2 = calcCO2(totalSavings);
+        $('stat-co2-g7h8').textContent = co2 >= 1 ? co2.toFixed(2) + 'kg' : Math.round(co2 * 1000) + 'g';
+
+        // Urgent banner
+        const expiringSoon = active.filter(l => { const d = daysBetween(l.expiryDate); return d >= 0 && d <= 2; });
+        const urgentTracked = activeTrackedItems().filter(t => { const d = daysBetween(t.expiryDate); return d >= 0 && d <= 2; });
+        const urgentCount = expiringSoon.length + urgentTracked.length;
+        if (urgentCount > 0) {
+            $('urgent-banner-k3f9').classList.remove('hidden');
+            $('urgent-text-x7m2').textContent = `${urgentCount} item${urgentCount > 1 ? 's' : ''} expire soon — use them today!`;
+        } else {
+            $('urgent-banner-k3f9').classList.add('hidden');
+        }
+
+        // Waste score ring
+        const score = calcWasteScore();
+        const circle = $('waste-ring-circle-m1n2');
+        const circ = 2 * Math.PI * 60;
+        const offset = circ - (score / 100) * circ;
+        circle.setAttribute('stroke-dashoffset', offset);
+        const color = score >= 70 ? 'var(--emerald)' : score >= 40 ? '#F59E0B' : 'var(--rust)';
+        circle.setAttribute('stroke', color);
+        $('waste-ring-score-p3q4').textContent = score;
+        $('waste-ring-score-p3q4').setAttribute('fill', color);
+
+        // Activity feed
+        renderActivityFeed();
+    }
+
+    function renderActivityFeed() {
+        const feed = $('activity-feed-x1y2');
+        const activities = [];
+
+        data.leftovers.forEach(l => {
+            activities.push({ date: l.createdAt, text: `🥡 Added leftover: ${l.name}`, type: 'leftover' });
+            if (l.status === 'eaten') activities.push({ date: l.createdAt, text: `😋 Ate: ${l.name}`, type: 'eaten' });
+            if (l.status === 'wasted') activities.push({ date: l.createdAt, text: `🗑️ Wasted leftover: ${l.name}`, type: 'waste' });
+        });
+        data.wasteLog.forEach(w => {
+            activities.push({ date: w.date, text: `🗑️ Wasted: ${w.item} (${fmt(w.cost)})`, type: 'waste' });
+        });
+        data.trackedItems.forEach(t => {
+            activities.push({ date: t.createdAt, text: `🔔 Tracking: ${t.name}`, type: 'alert' });
+        });
+
+        activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const recent = activities.slice(0, 5);
+
+        if (recent.length === 0) {
+            feed.innerHTML = '<p class="empty-state text-sm">No activity yet — start logging to see your kitchen insights!</p>';
+            return;
+        }
+
+        feed.innerHTML = recent.map(a => `
+            <div class="flex items-center gap-2 text-sm py-1 border-b border-gray-100 last:border-0">
+                <span class="text-xs text-dark-muted whitespace-nowrap">${fmtDate(a.date)}</span>
+                <span>${a.text}</span>
+            </div>
+        `).join('');
+    }
+
+    // ====== LEFTOVERS ======
+    function renderLeftovers() {
+        const container = $('lo-active-list-o6p7');
+        const active = activeLeftovers();
+
+        if (active.length === 0) {
+            container.innerHTML = '<p class="empty-state text-sm">Nothing here yet — add your first leftover!</p>';
+        } else {
+            container.innerHTML = active.map(l => {
+                const days = daysBetween(l.expiryDate);
+                const locEmoji = l.location === 'Freezer' ? '🧊' : l.location === 'Fridge' ? '❄️' : '🍽️';
+                let badge, badgeClass;
+                if (days <= 0) { badge = '🔴 Expired'; badgeClass = 'badge-red'; }
+                else if (days <= 2) { badge = '🟡 Use Soon'; badgeClass = 'badge-yellow'; }
+                else { badge = '🟢 Fresh'; badgeClass = 'badge-green'; }
+
+                return `
+                <div class="card-white" data-lo-id="${l.id}">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="font-bold text-dark">${locEmoji} ${l.name}</h4>
+                            <p class="text-xs text-dark-muted">${l.quantity} · Expires ${fmtDate(l.expiryDate)}</p>
+                            ${l.notes ? `<p class="text-xs text-dark-muted italic mt-1">${l.notes}</p>` : ''}
+                        </div>
+                        <span class="badge ${badgeClass}">${badge}</span>
+                    </div>
+                    <div class="flex gap-2 mt-2">
+                        <button class="btn-emerald text-xs lo-eaten-btn flex-1" data-id="${l.id}">😋 Eaten</button>
+                        <button class="btn-rust text-xs lo-wasted-btn flex-1" data-id="${l.id}">🗑️ Wasted</button>
+                    </div>
+                    <div class="reason-picker" id="reason-picker-${l.id}">
+                        <p class="text-xs font-semibold mb-2">Why was it wasted?</p>
+                        <div class="flex flex-wrap gap-1">
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="${l.id}" data-reason="Expired">Expired</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="${l.id}" data-reason="Forgot">Forgot about it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="${l.id}" data-reason="Cooked too much">Too much made</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="${l.id}" data-reason="Didn't like">Didn't like it</button>
+                            <button class="badge badge-red cursor-pointer lo-reason-btn text-xs" data-id="${l.id}" data-reason="Other">Other</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            attachLeftoverActions();
+        }
+
+        // History
+        const historyItems = data.leftovers.filter(l => l.status !== 'active');
+        const histContainer = $('lo-history-section-w4x5');
+        if (historyItems.length === 0) {
+            histContainer.innerHTML = '<p class="empty-state text-sm">No history yet</p>';
+        } else {
+            histContainer.innerHTML = historyItems.map(l => `
+                <div class="card-white flex items-center justify-between py-2 px-3">
+                    <span class="text-sm">${l.status === 'eaten' ? '😋' : '🗑️'} ${l.name}</span>
+                    <span class="badge ${l.status === 'eaten' ? 'badge-green' : 'badge-red'} text-xs">${l.status}</span>
+                </div>
+            `).join('');
+        }
+    }
+
+    function attachLeftoverActions() {
+        document.querySelectorAll('.lo-eaten-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = data.leftovers.find(l => l.id === btn.dataset.id);
+                if (item) { item.status = 'eaten'; saveKey('leftovers'); renderAll(); }
+            });
+        });
+        document.querySelectorAll('.lo-wasted-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const picker = document.getElementById('reason-picker-' + btn.dataset.id);
+                if (picker) picker.classList.toggle('show');
+            });
+        });
+        document.querySelectorAll('.lo-reason-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = data.leftovers.find(l => l.id === btn.dataset.id);
+                if (item) {
+                    item.status = 'wasted';
+                    data.wasteLog.push({
+                        id: genId(), item: item.name, category: 'Leftovers',
+                        cost: 0, reason: btn.dataset.reason, date: today()
+                    });
+                    saveKey('leftovers'); saveKey('wasteLog'); renderAll();
+                }
+            });
+        });
+    }
+
+    $('lo-add-btn-k2l3').addEventListener('click', () => {
+        const name = $('lo-name-a2b3').value.trim();
+        const loc = $('lo-location-c4d5').value;
+        const qty = $('lo-qty-e6f7').value.trim();
+        const exp = $('lo-expiry-g8h9').value;
+        if (!name || !loc || !qty || !exp) return;
+        data.leftovers.push({
+            id: genId(), name, location: loc, quantity: qty, expiryDate: exp,
+            notes: $('lo-notes-i0j1').value.trim(), status: 'active', createdAt: today()
+        });
+        saveKey('leftovers');
+        $('lo-name-a2b3').value = ''; $('lo-location-c4d5').value = '';
+        $('lo-qty-e6f7').value = ''; $('lo-expiry-g8h9').value = ''; $('lo-notes-i0j1').value = '';
+        flash($('lo-success-m4n5'));
+        renderAll();
+    });
+
+    $('lo-history-toggle-u2v3').addEventListener('click', () => {
+        $('lo-history-section-w4x5').classList.toggle('show');
+    });
+
+    // AI Meal Suggester
+    $('lo-ai-suggest-q8r9').addEventListener('click', async () => {
+        const active = activeLeftovers();
+        if (active.length === 0) {
+            $('lo-ai-results-s0t1').classList.remove('hidden');
+            $('lo-ai-results-s0t1').innerHTML = '<p class="text-sm text-dark-muted italic">No leftovers to work with — add some first!</p>';
+            return;
+        }
+        const itemNames = active.map(l => l.name).join(', ');
+        const btn = $('lo-ai-suggest-q8r9');
+        btn.disabled = true;
+        $('lo-ai-results-s0t1').classList.remove('hidden');
+        $('lo-ai-results-s0t1').innerHTML = '<p class="text-sm text-dark-muted">✨ Thinking of delicious ideas...</p>';
+        try {
+            const res = await AppSDK.ai.chat({
+                messages: [
+                    { role: 'system', content: 'You are a creative home chef assistant. The user has these leftovers available. Suggest exactly 3 creative, easy meal ideas using one or more of them. For each, give a fun name, a one-sentence description, and which leftovers it uses. Format as a numbered list. Keep it brief and enthusiastic.' },
+                    { role: 'user', content: `My leftovers: ${itemNames}` }
+                ]
+            });
+            $('lo-ai-results-s0t1').innerHTML = `<div class="bg-white rounded-xl p-3 text-sm whitespace-pre-line">${res.content}</div>`;
+        } catch(e) {
+            $('lo-ai-results-s0t1').innerHTML = '<p class="text-sm text-rust">Something went wrong. Please try again.</p>';
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    // ====== WASTE LOG ======
+    $('wl-date-i1j2').value = today();
+
+    $('wl-add-btn-k3l4').addEventListener('click', () => {
+        const item = $('wl-name-a3b4').value.trim();
+        const cat = $('wl-cat-c5d6').value;
+        const cost = parseFloat($('wl-cost-e7f8').value);
+        const reason = $('wl-reason-g9h0').value;
+        const date = $('wl-date-i1j2').value;
+        if (!item || !cat || isNaN(cost) || !reason || !date) return;
+        data.wasteLog.push({ id: genId(), item, category: cat, cost, reason, date });
+        saveKey('wasteLog');
+        $('wl-name-a3b4').value = ''; $('wl-cat-c5d6').value = '';
+        $('wl-cost-e7f8').value = ''; $('wl-reason-g9h0').value = '';
+        $('wl-date-i1j2').value = today();
+        flash($('wl-success-m5n6'));
+        renderAll();
+    });
+
+    function renderWaste() {
+        const wasteWeek = calcWasteThisWeek();
+        $('wl-total-o7p8').textContent = fmt(wasteWeek);
+
+        // Bar chart - last 7 days
+        const barContainer = $('wl-barchart-q9r0');
+        const days = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(NOW);
+            d.setDate(d.getDate() - i);
+            const ds = d.toISOString().split('T')[0];
+            const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+            const total = data.wasteLog.filter(w => w.date === ds).reduce((s, w) => s + w.cost, 0);
+            days.push({ label: dayName, total, date: ds });
+        }
+        const maxVal = Math.max(...days.map(d => d.total), 1);
+        barContainer.innerHTML = days.map(d => {
+            const h = Math.max(4, (d.total / maxVal) * 80);
+            return `<div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-bold text-white tabular-nums">${d.total > 0 ? fmt(d.total) : ''}</span>
+                <div class="bar-chart-bar bg-white bg-opacity-70" style="height:${h}px; width:32px;"></div>
+                <span class="text-xs text-white opacity-80">${d.label}</span>
+            </div>`;
+        }).join('');
+
+        // Smart insights
+        const insightsEl = $('wl-insights-s1t2');
+        if (data.wasteLog.length === 0) {
+            insightsEl.innerHTML = '<p class="text-dark-muted italic">Log some waste entries to see insights</p>';
+        } else {
+            const reasonCount = {};
+            const catCount = {};
+            data.wasteLog.forEach(w => {
+                reasonCount[w.reason] = (reasonCount[w.reason] || 0) + 1;
+                catCount[w.category] = (catCount[w.category] || 0) + 1;
+            });
+            const topReason = Object.entries(reasonCount).sort((a,b) => b[1]-a[1])[0]?.[0] || 'N/A';
+            const topCat = Object.entries(catCount).sort((a,b) => b[1]-a[1])[0]?.[0] || 'N/A';
+            const tips = {
+                'Expired': 'Try meal planning weekly to use produce before it expires.',
+                'Forgot': 'Move items to the front of your fridge where they\'re visible.',
+                'Over-bought': 'Shop with a list and stick to it — buy only what you need.',
+                'Didn\'t like': 'Try smaller portions of new foods before committing.',
+                'Cooked too much': 'Use measuring cups and plan portions before cooking.',
+                'Other': 'Track your waste patterns for a few weeks to spot trends.',
+            };
+            insightsEl.innerHTML = `
+                <p>📊 Top waste reason: <strong>${topReason}</strong></p>
+                <p>📦 Most wasted category: <strong>${topCat}</strong></p>
+                <p>💡 Tip: ${tips[topReason] || tips['Other']}</p>
+            `;
+        }
+
+        // Full log
+        const logEl = $('wl-full-log-u3v4');
+        const sorted = [...data.wasteLog].sort((a,b) => new Date(b.date) - new Date(a.date));
+        if (sorted.length === 0) {
+            logEl.innerHTML = '<p class="empty-state text-sm">Nothing here yet — add your first item!</p>';
+        } else {
+            logEl.innerHTML = sorted.map(w => `
+                <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                    <div class="flex-1">
+                        <div class="text-sm font-semibold">${w.item}</div>
+                        <div class="text-xs text-dark-muted">${fmtDate(w.date)} · <span class="badge-cat">${w.category}</span> · ${w.reason}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-rust tabular-nums">${fmt(w.cost)}</span>
+                        <button class="text-rust wl-delete-btn cursor-pointer p-1" data-id="${w.id}" title="Delete"><i data-lucide="x" class="w-4 h-4 pointer-events-none"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+            document.querySelectorAll('.wl-delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (confirm('Delete this waste entry?')) {
+                        data.wasteLog = data.wasteLog.filter(w => w.id !== btn.dataset.id);
+                        saveKey('wasteLog'); renderAll();
+                    }
+                });
+            });
+        }
+    }
+
+    // ====== BUDGET ======
+    $('bg-save-btn-c6d7').addEventListener('click', () => {
+        const val = parseFloat($('bg-budget-a4b5').value);
+        if (isNaN(val) || val < 0) return;
+        data.budgetSettings.weeklyBudget = val;
+        saveKey('budgetSettings');
+        flash($('bg-save-flash-e8f9'));
+        renderAll();
+    });
+
+    $('bg-date-q0r1').value = today();
+
+    $('bg-add-btn-s2t3').addEventListener('click', () => {
+        const store = $('bg-store-k4l5').value.trim();
+        const item = $('bg-item-m6n7').value.trim();
+        const amount = parseFloat($('bg-amount-o8p9').value);
+        const date = $('bg-date-q0r1').value;
+        if (!store || !item || isNaN(amount) || !date) return;
+        data.purchases.push({ id: genId(), store, item, amount, date });
+        saveKey('purchases');
+        $('bg-store-k4l5').value = ''; $('bg-item-m6n7').value = '';
+        $('bg-amount-o8p9').value = ''; $('bg-date-q0r1').value = today();
+        flash($('bg-add-flash-u4v5'));
+        renderAll();
+    });
+
+    $('bg-swap-btn-c2d3').addEventListener('click', () => {
+        const item = $('bg-swap-item-y8z9').value.trim();
+        const saved = parseFloat($('bg-swap-saved-a0b1').value);
+        if (!item || isNaN(saved)) return;
+        data.swapSavings.push({ id: genId(), item, saved, date: today() });
+        saveKey('swapSavings');
+        $('bg-swap-item-y8z9').value = ''; $('bg-swap-saved-a0b1').value = '';
+        flash($('bg-swap-flash-e4f5'));
+        renderAll();
+    });
+
+    function renderBudget() {
+        $('bg-budget-a4b5').value = data.budgetSettings.weeklyBudget || '';
+        const budget = data.budgetSettings.weeklyBudget || 0;
+        const spent = calcSpentThisWeek();
+        const remaining = Math.max(0, budget - spent);
+        const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : 0;
+
+        const bar = $('bg-progress-bar-g0h1');
+        bar.style.width = pct + '%';
+        bar.style.background = pct < 60 ? 'var(--emerald)' : pct < 85 ? '#F59E0B' : 'var(--rust)';
+        $('bg-progress-label-i2j3').textContent = `${fmt(spent)} spent of ${fmt(budget)} budget — ${fmt(remaining)} remaining`;
+
+        // Category breakdown
+        const catSpend = {};
+        data.purchases.filter(p => isThisWeek(p.date)).forEach(p => {
+            catSpend[p.item] = (catSpend[p.item] || 0) + p.amount;
+        });
+        const chartEl = $('bg-spend-chart-w6x7');
+        const entries = Object.entries(catSpend);
+        if (entries.length === 0) {
+            chartEl.innerHTML = '<p class="text-sm text-dark-muted italic w-full text-center">No purchases this week</p>';
+        } else {
+            const maxSpend = Math.max(...entries.map(e => e[1]), 1);
+            const colors = ['var(--emerald)', 'var(--mint)', 'var(--rust)', '#F59E0B', '#6B7280', '#3B82F6'];
+            chartEl.innerHTML = entries.map((e, i) => {
+                const h = Math.max(8, (e[1] / maxSpend) * 100);
+                return `<div class="flex flex-col items-center gap-1 flex-1">
+                    <span class="text-xs font-bold tabular-nums">${fmt(e[1])}</span>
+                    <div class="bar-chart-bar w-full" style="height:${h}px; background:${colors[i % colors.length]};"></div>
+                    <span class="text-xs text-dark-muted text-center leading-tight">${e[0]}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Swap savings total
+        $('bg-swap-total-g6h7').textContent = `💚 Total saved from smart swaps: ${fmt(calcTotalSwapSavings())}`;
+
+        // Waste reduction score
+        $('bg-waste-score-i8j9').textContent = calcWasteScore();
+    }
+
+    // ====== ALERTS ======
+    $('al-add-btn-u0v1').addEventListener('click', () => {
+        const name = $('al-name-k0l1').value.trim();
+        const cat = $('al-cat-m2n3').value;
+        const qty = $('al-qty-o4p5').value.trim();
+        const exp = $('al-expiry-q6r7').value;
+        const loc = $('al-loc-s8t9').value;
+        if (!name || !cat || !qty || !exp || !loc) return;
+        data.trackedItems.push({
+            id: genId(), name, category: cat, quantity: qty,
+            expiryDate: exp, location: loc, status: 'active', createdAt: today()
+        });
+        saveKey('trackedItems');
+        $('al-name-k0l1').value = ''; $('al-cat-m2n3').value = '';
+        $('al-qty-o4p5').value = ''; $('al-expiry-q6r7').value = '';
+        $('al-loc-s8t9').value = '';
+        flash($('al-success-w2x3'));
+        renderAll();
+    });
+
+    function renderAlerts() {
+        const items = activeTrackedItems();
+        const expired = items.filter(t => daysBetween(t.expiryDate) <= 0);
+        const soon = items.filter(t => { const d = daysBetween(t.expiryDate); return d >= 1 && d <= 3; });
+        const fresh = items.filter(t => daysBetween(t.expiryDate) >= 4);
+
+        $('al-summary-y4z5').innerHTML = `🔴 ${expired.length} expired · 🟡 ${soon.length} expiring soon · 🟢 ${fresh.length} fresh items`;
+
+        // Smart tip
+        const tipEl = $('al-smart-tip-a6b7');
+        if (soon.length > 0) {
+            tipEl.classList.remove('hidden');
+            const firstSoon = soon[0];
+            tipEl.innerHTML = `💡 <strong>${firstSoon.name}</strong> expires in ${daysBetween(firstSoon.expiryDate)} day${daysBetween(firstSoon.expiryDate) > 1 ? 's' : ''} — try adding it to tonight's dinner!`;
+        } else {
+            tipEl.classList.add('hidden');
+        }
+
+        function renderGroup(containerId, items, bgClass, label) {
+            const el = $(containerId);
+            if (items.length === 0) { el.innerHTML = ''; return; }
+            const locEmoji = loc => loc === 'Freezer' ? '🧊' : loc === 'Fridge' ? '❄️' : loc === 'Pantry' ? '🗄️' : '🍽️';
+            el.innerHTML = `<h3 class="font-bold text-sm mb-2">${label}</h3>` +
+                items.map(t => {
+                    const days = daysBetween(t.expiryDate);
+                    return `<div class="${bgClass} mb-2">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-sm">${locEmoji(t.location)} ${t.name}</h4>
+                                <p class="text-xs opacity-80">${t.quantity} · <span class="badge-cat">${t.category}</span> · ${fmtDate(t.expiryDate)}</p>
+                                <p class="text-xs opacity-70 mt-1">${days <= 0 ? 'Expired' : days + ' day' + (days > 1 ? 's' : '') + ' left'}</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 mt-2">
+                            <button class="btn-emerald text-xs al-used-btn flex-1" data-id="${t.id}">✅ Used</button>
+                            <button class="btn-rust text-xs al-discard-btn flex-1" data-id="${t.id}">🗑️ Discarded</button>
+                        </div>
+                    </div>`;
+                }).join('');
+        }
+
+        renderGroup('al-expired-section-c8d9', expired, 'card-rust', '🔴 Expired');
+        renderGroup('al-soon-section-e0f1', soon, 'card-amber', '🟡 Use Soon');
+        renderGroup('al-fresh-section-g2h3', fresh, 'card', '🟢 Fresh');
+
+        lucide.createIcons();
+
+        document.querySelectorAll('.al-used-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = data.trackedItems.find(t => t.id === btn.dataset.id);
+                if (item) { item.status = 'used'; saveKey('trackedItems'); renderAll(); }
+            });
+        });
+        document.querySelectorAll('.al-discard-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = data.trackedItems.find(t => t.id === btn.dataset.id);
+                if (item) {
+                    item.status = 'discarded';
+                    data.wasteLog.push({
+                        id: genId(), item: item.name, category: item.category,
+                        cost: 0, reason: 'Expired', date: today()
+                    });
+                    saveKey('trackedItems'); saveKey('wasteLog'); renderAll();
+                }
+            });
+        });
+    }
+
+    // ====== IMPACT ======
+    function renderImpact() {
+        const score = calcWasteScore();
+        const grade = getGrade(score);
+        const circ = 2 * Math.PI * 68;
+        const offset = circ - (score / 100) * circ;
+        const color = score >= 70 ? 'var(--emerald)' : score >= 40 ? '#F59E0B' : 'var(--rust)';
+
+        const ic = $('impact-ring-circle-k6l7');
+        ic.setAttribute('stroke-dashoffset', offset);
+        ic.setAttribute('stroke', color);
+        $('impact-ring-score-m8n9').textContent = score;
+        $('impact-ring-score-m8n9').setAttribute('fill', color);
+        $('impact-ring-grade-o0p1').textContent = grade;
+
+        // Impact stats
+        const totalSavings = calcTotalSwapSavings();
+        const budget = data.budgetSettings.weeklyBudget || 0;
+        const wasteThisWeek = calcWasteThisWeek();
+        const moneySaved = totalSavings + Math.max(0, budget - wasteThisWeek - calcSpentThisWeek());
+
+        const co2 = calcCO2(totalSavings);
+        $('imp-co2-q2r3').textContent = co2 >= 1 ? co2.toFixed(2) + 'kg' : Math.round(co2 * 1000) + 'g';
+        $('imp-saved-s4t5').textContent = fmt(Math.max(0, moneySaved));
+
+        const eatenCount = data.leftovers.filter(l => l.status === 'eaten').length;
+        const usedTracked = data.trackedItems.filter(t => t.status === 'used').length;
+        const mealsSaved = eatenCount + Math.round(usedTracked * 0.5);
+        $('imp-meals-u6v7').textContent = mealsSaved;
+
+        // Days tracked
+        const allDates = [
+            ...data.leftovers.map(l => l.createdAt),
+            ...data.wasteLog.map(w => w.date),
+            ...data.purchases.map(p => p.date),
+            ...data.trackedItems.map(t => t.createdAt),
+        ].filter(Boolean);
+        let daysTracked = 0;
+        if (allDates.length > 0) {
+            const earliest = new Date(Math.min(...allDates.map(d => new Date(d + 'T00:00:00'))));
+            daysTracked = Math.max(1, Math.ceil((NOW - earliest) / 86400000));
+        }
+        $('imp-days-w8x9').textContent = daysTracked;
+
+        // Monthly waste trend (4 weeks)
+        const trendEl = $('imp-trend-chart-y0z1');
+        const weeks = [];
+        for (let w = 3; w >= 0; w--) {
+            const weekStart = new Date(NOW);
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay() - (w * 7));
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 7);
+            const total = data.wasteLog.filter(wl => {
+                const d = new Date(wl.date + 'T00:00:00');
+                return d >= weekStart && d < weekEnd;
+            }).reduce((s, wl) => s + wl.cost, 0);
+            weeks.push({ label: `Wk ${4 - w}`, total });
+        }
+        const maxW = Math.max(...weeks.map(w => w.total), 1);
+        trendEl.innerHTML = weeks.map(w => {
+            const h = Math.max(6, (w.total / maxW) * 90);
+            return `<div class="flex flex-col items-center gap-1 flex-1">
+                <span class="text-xs font-bold tabular-nums">${fmt(w.total)}</span>
+                <div class="bar-chart-bar w-full" style="height:${h}px; background: var(--rust);"></div>
+                <span class="text-xs text-dark-muted">${w.label}</span>
+            </div>`;
+        }).join('');
+
+        // Achievements
+        const badgesEl = $('imp-badges-a2b3');
+        const badges = [
+            {
+                emoji: '🌱', name: 'First Step', desc: 'Logged your first item',
+                unlocked: data.leftovers.length > 0 || data.wasteLog.length > 0 || data.trackedItems.length > 0
+            },
+            {
+                emoji: '💚', name: 'Zero Waste Week', desc: '$0 waste in a week',
+                unlocked: wasteThisWeek === 0 && (data.wasteLog.length > 0 || data.purchases.length > 0)
+            },
+            {
+                emoji: '🏆', name: 'Budget Champion', desc: 'Stayed under budget',
+                unlocked: budget > 0 && calcSpentThisWeek() <= budget
+            },
+            {
+                emoji: '🥗', name: 'Leftover Hero', desc: 'Eaten 10 leftovers',
+                unlocked: eatenCount >= 10
+            },
+            {
+                emoji: '🌍', name: 'Eco Warrior', desc: 'Saved 1kg CO₂',
+                unlocked: co2 >= 1
+            },
+        ];
+        badgesEl.innerHTML = badges.map(b => `
+            <div class="card text-center p-3 ${b.unlocked ? '' : 'achievement-locked'}">
+                <div class="text-2xl mb-1">${b.emoji}</div>
+                <div class="text-xs font-bold">${b.name}</div>
+                <div class="text-xs text-dark-muted">${b.desc}</div>
+                <div class="text-xs mt-1 font-semibold ${b.unlocked ? 'text-emerald' : 'text-gray-400'}">${b.unlocked ? '✅ Unlocked' : '🔒 Locked'}</div>
+            </div>
+        `).join('');
+
+        // Motivational
+        $('imp-motivational-c4d5').textContent = mealsSaved > 0
+            ? `You've prevented ${mealsSaved} meal${mealsSaved > 1 ? 's' : ''} from going to waste this month. Keep it up! 🌿`
+            : 'Start tracking your leftovers and food to see the impact you\'re making! 🌿';
+    }
+
+    // ====== RENDER ALL ======
+    function renderAll() {
+        renderDashboard();
+        renderLeftovers();
+        renderWaste();
+        renderBudget();
+        renderAlerts();
+        renderImpact();
+        lucide.createIcons();
+    }
+
+    // ====== INIT ======
+    loadData();
+    seedSampleData();
+    loadData();
+    renderAll();
+    </script>
+<script nonce="">
+  var activeElement = null;
+  var selectionEnabled = false;
+  var selectableElements = [];
+  var SELECTABLE_SELECTOR = '[data-id]';
+  var SKIP_TAGS = {'HTML':1,'HEAD':1,'BODY':1,'SCRIPT':1,'STYLE':1,'LINK':1,'META':1,'PATH':1,'CIRCLE':1,'RECT':1,'POLYGON':1,'POLYLINE':1,'LINE':1,'ELLIPSE':1,'G':1,'DEFS':1,'CLIPPATH':1,'USE':1,'SYMBOL':1,'IFRAME':1,'CANVAS':1};
+  var INTERACTIVE_TAGS = {'INPUT':1,'TEXTAREA':1,'SELECT':1,'BUTTON':1,'A':1,'VIDEO':1,'AUDIO':1,'DETAILS':1,'SUMMARY':1};
+
+
+  function getSlotId(el) {
+    return el.getAttribute('data-id') || '';
+  }
+
+  function isImageElement(el) {
+    var tag = el.tagName.toUpperCase();
+    if (tag === 'IMG' || tag === 'SVG') return true;
+    var children = el.children;
+    for (var i = 0; i < children.length; i++) {
+      var childTag = children[i].tagName.toUpperCase();
+      if (childTag === 'IMG' || childTag === 'SVG') return true;
+    }
+    return false;
+  }
+
+  function isInteractiveElement(el) {
+    return INTERACTIVE_TAGS[el.tagName.toUpperCase()] === 1;
+  }
+
+  function hasInteractiveChild(el) {
+    var children = el.children;
+    for (var i = 0; i < children.length; i++) {
+      if (INTERACTIVE_TAGS[children[i].tagName.toUpperCase()] === 1) return true;
+    }
+    return false;
+  }
+
+  function isSelectableElement(el) {
+    var tag = el.tagName.toUpperCase();
+    if (SKIP_TAGS[tag]) return false;
+    // The backend curates which elements receive data-id, so any
+    // non-skipped element with that attribute is considered meaningful
+    // and should be selectable (text, images, interactive, or visual).
+    return true;
+  }
+
+  function deactivateElement() {
+    if (activeElement) {
+      activeElement.style.removeProperty('outline');
+      activeElement.style.removeProperty('outline-offset');
+      activeElement.style.removeProperty('border-radius');
+    }
+  }
+
+  function activateElement(el) {
+    activeElement = el;
+    el.style.setProperty('outline', '2.5px solid #987AEE', 'important');
+    el.style.setProperty('outline-offset', '2px', 'important');
+    el.style.setProperty('border-radius', '6px', 'important');
+  }
+
+  function getWrappingHtml(el) {
+    var current = el;
+    while (current && current !== document.body) {
+      var parent = current.parentElement;
+      if (parent && parent.hasAttribute('data-id') && parent !== el) {
+        return parent.outerHTML;
+      }
+      current = parent;
+    }
+    return el.outerHTML;
+  }
+
+  function getInteractiveValue(el) {
+    var tag = el.tagName.toUpperCase();
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return el.value || el.placeholder || '';
+    if (tag === 'SELECT') return el.options && el.selectedIndex >= 0 ? el.options[el.selectedIndex].text : '';
+    if (tag === 'A') return (el.textContent || '') + (el.href ? ' (' + el.href + ')' : '');
+    if (tag === 'VIDEO' || tag === 'AUDIO') return el.src || '';
+    return el.textContent || '';
+  }
+
+  function getElementType(el) {
+    if (isImageElement(el)) return 'image';
+    if (isInteractiveElement(el) || hasInteractiveChild(el)) return 'interactive';
+    return 'text';
+  }
+
+  function getElementValue(el) {
+    var elType = getElementType(el);
+    if (elType === 'image') return '';
+    if (isInteractiveElement(el)) return getInteractiveValue(el);
+    if (hasInteractiveChild(el)) {
+      var children = el.children;
+      for (var i = 0; i < children.length; i++) {
+        if (INTERACTIVE_TAGS[children[i].tagName.toUpperCase()] === 1) {
+          return getInteractiveValue(children[i]);
+        }
+      }
+    }
+    return el.textContent || '';
+  }
+
+  function getElementDescription(el) {
+    var text = (el.textContent || '').trim();
+    if (text) return text.length > 100 ? text.substring(0, 100) : text;
+    var img = el.tagName.toUpperCase() === 'IMG' ? el : el.querySelector('img');
+    if (img) {
+      var alt = img.getAttribute('alt');
+      if (alt && alt.trim()) return alt.trim();
+    }
+    var ariaLabel = el.getAttribute('aria-label');
+    if (ariaLabel && ariaLabel.trim()) return ariaLabel.trim();
+    var title = el.getAttribute('title');
+    if (title && title.trim()) return title.trim();
+    if (el.placeholder && el.placeholder.trim()) return el.placeholder.trim();
+    return '';
+  }
+
+  function notifyElementSelected(el, action) {
+    var rect = el.getBoundingClientRect();
+    var elementType = getElementType(el);
+    var value = getElementValue(el);
+    var description = getElementDescription(el);
+    var selectionHtml = getWrappingHtml(el);
+    var msg = {
+      type: 'element_selected',
+      slotId: getSlotId(el),
+      elementType: elementType,
+      value: value,
+      description: description,
+      selectionHtml: selectionHtml,
+      bounds: { top: rect.top, left: rect.left, width: rect.width, height: rect.height }
+    };
+    if (action) msg.action = action;
+    window.parent.postMessage(msg, '*');
+  }
+
+
+  function setupElement(el) {
+    if (el.dataset.selectionInitialized) return;
+    el.dataset.selectionInitialized = 'true';
+    if (selectionEnabled) el.style.cursor = 'pointer';
+
+    el.addEventListener('click', function(e) {
+      if (!selectionEnabled) return;
+      e.stopPropagation();
+      if (activeElement !== el) {
+        deactivateElement();
+        activateElement(el);
+      }
+      notifyElementSelected(el);
+    });
+
+    el.addEventListener('mouseenter', function() {
+      if (!selectionEnabled) return;
+      if (el !== activeElement) {
+        el.style.setProperty('outline', '1.5px solid rgba(59, 130, 246, 0.5)', 'important');
+        el.style.setProperty('outline-offset', '2px', 'important');
+        el.style.setProperty('border-radius', '6px', 'important');
+      }
+    });
+
+    el.addEventListener('mouseleave', function() {
+      if (!selectionEnabled) return;
+      if (el !== activeElement) {
+        el.style.removeProperty('outline');
+        el.style.removeProperty('outline-offset');
+        el.style.removeProperty('border-radius');
+      }
+    });
+  }
+
+  function initializeElements() {
+    var allElements = document.querySelectorAll(SELECTABLE_SELECTOR);
+    for (var i = 0; i < allElements.length; i++) {
+      if (isSelectableElement(allElements[i])) {
+        setupElement(allElements[i]);
+      }
+    }
+    rebuildSelectableList();
+  }
+
+  // Rebuild the cached list of keyboard-navigable elements.
+  // Called by initializeElements (at init + on DOM mutations).
+  function rebuildSelectableList() {
+    var all = document.querySelectorAll('[data-selection-initialized]');
+    var result = [];
+    for (var i = 0; i < all.length; i++) {
+      var el = all[i];
+      var rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      var style = window.getComputedStyle(el);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+      result.push(el);
+    }
+    selectableElements = result;
+  }
+
+
+  function setupBodyListeners() {
+    if (!document.body) return;
+
+    // Capture-phase handler: block all native interactions (links, buttons, forms)
+    // when selection is enabled. Our element click handlers still fire normally.
+    document.addEventListener('click', function(e) {
+      if (selectionEnabled) {
+        e.preventDefault();
+      }
+    }, true);
+
+    document.body.addEventListener('click', function(e) {
+      if (!selectionEnabled) return;
+      var closestInitialized = e.target.closest('[data-selection-initialized]');
+      if (closestInitialized) return;
+
+      deactivateElement();
+      activeElement = null;
+      window.parent.postMessage({ type: 'element_deselected' }, '*');
+    });
+  }
+
+
+  window.addEventListener('message', function(e) {
+    var data = e.data;
+    if (data && data.type === 'slideCommand' && data.payload) {
+      data = { type: data.payload.command, ...data.payload.data };
+    }
+
+    if (data.type === 'clear_selection') {
+      deactivateElement();
+      activeElement = null;
+      window.parent.postMessage({ type: 'element_deselected' }, '*');
+      return;
+    }
+
+    if (data.type === 'enable_selection') {
+      selectionEnabled = true;
+      var allEls = document.querySelectorAll('[data-selection-initialized]');
+      for (var i = 0; i < allEls.length; i++) {
+        allEls[i].style.cursor = 'pointer';
+      }
+      return;
+    }
+
+    if (data.type === 'disable_selection') {
+      selectionEnabled = false;
+      deactivateElement();
+      activeElement = null;
+      var allEls2 = document.querySelectorAll('[data-selection-initialized]');
+      for (var j = 0; j < allEls2.length; j++) {
+        allEls2[j].style.cursor = '';
+      }
+      window.parent.postMessage({ type: 'element_deselected' }, '*');
+      return;
+    }
+  });
+
+
+  var isMouseDown = false;
+  document.addEventListener('mousedown', function() { isMouseDown = true; });
+  document.addEventListener('mouseup', function() { isMouseDown = false; });
+
+  // Auto-activate the first selectable element when iframe gains keyboard focus
+  // (skip if the focus came from a mouse click).
+  window.addEventListener('focus', function() {
+    if (isMouseDown) return;
+    if (!selectionEnabled) return;
+    if (!activeElement) {
+      if (selectableElements.length > 0) {
+        activateElement(selectableElements[0]);
+        notifyElementSelected(selectableElements[0]);
+      }
+    }
+  });
+
+  // Keyboard navigation: Tab cycles elements, Enter triggers Ask Copilot,
+  // Escape deselects.
+  document.addEventListener('keydown', function(e) {
+    if (!selectionEnabled) return;
+
+    if (e.key === 'Escape') {
+      if (activeElement) {
+        e.preventDefault();
+        deactivateElement();
+        activeElement = null;
+        window.parent.postMessage({ type: 'element_deselected' }, '*');
+      }
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      if (activeElement) {
+        e.preventDefault();
+        // Re-send element_selected with action so the parent triggers Ask Copilot
+        notifyElementSelected(activeElement, 'ask_copilot');
+      }
+      return;
+    }
+
+    if (e.key !== 'Tab') return;
+    e.preventDefault();
+
+    if (selectableElements.length === 0) return;
+
+    var currentIndex = activeElement ? selectableElements.indexOf(activeElement) : -1;
+    var nextIndex;
+    var atBoundary = false;
+
+    if (e.shiftKey) {
+      if (currentIndex <= 0) {
+        atBoundary = true;
+      } else {
+        nextIndex = currentIndex - 1;
+      }
+    } else {
+      if (currentIndex >= selectableElements.length - 1) {
+        atBoundary = true;
+      } else {
+        nextIndex = currentIndex + 1;
+      }
+    }
+
+    // At boundary: tell parent to move focus outside the iframe.
+    if (atBoundary) {
+      deactivateElement();
+      activeElement = null;
+      window.parent.postMessage({
+        type: 'tab_exit',
+        direction: e.shiftKey ? 'backward' : 'forward'
+      }, '*');
+      return;
+    }
+
+    deactivateElement();
+    activateElement(selectableElements[nextIndex]);
+    notifyElementSelected(selectableElements[nextIndex]);
+    selectableElements[nextIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      initializeElements();
+      setupBodyListeners();
+    });
+  } else {
+    initializeElements();
+    setupBodyListeners();
+  }
+
+  var mutationTimer = null;
+  var observer = new MutationObserver(function() {
+    if (mutationTimer) return;
+    mutationTimer = setTimeout(function() {
+      mutationTimer = null;
+      initializeElements();
+    }, 200);
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+</script>
+</body></html>
